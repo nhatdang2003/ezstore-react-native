@@ -29,11 +29,14 @@ const Select = ({
     error,
     disabled = false
 }: SelectProps) => {
+    const styledIcon = icon && React.cloneElement(icon as React.ReactElement, {
+        color: '#666'
+    });
 
     return (
         <View style={styles.container}>
             <View style={styles.pickerContainer} >
-                {icon}
+                {styledIcon}
                 <Picker
                     style={styles.picker}
                     selectedValue={value}
@@ -67,6 +70,9 @@ const styles = StyleSheet.create({
         backgroundColor: COLOR.BACKGROUND,
         borderWidth: 1,
         borderColor: COLOR.BACKGROUND
+    },
+    icon: {
+        color: '#666'
     }
 })
 
