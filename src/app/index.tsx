@@ -9,6 +9,7 @@ import Checkbox from '@/src/components/Checkbox';
 import DatePicker from '../components/Datepicker';
 import Select from '../components/Select';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import OtpInput from '../components/OtpInput';
 
 
 const WelcomeScreen = () => {
@@ -25,8 +26,11 @@ const WelcomeScreen = () => {
         { label: 'Option 2', value: '2' },
         { label: 'Option 3', value: '3' },
     ];
+
+    const [otp, setOtp] = useState('')
     console.log(selectedValue)
     console.log(date)
+    console.log(otp)
 
     return (
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -66,6 +70,8 @@ const WelcomeScreen = () => {
                 icon={<FontAwesome6 name="person" size={24} color="black" />}
                 label="Select Option"
             />
+
+            <OtpInput setValue={setOtp} />
         </View>
     )
 }
