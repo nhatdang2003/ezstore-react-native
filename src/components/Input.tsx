@@ -2,6 +2,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-nativ
 import React, { useState } from 'react'
 import { ReactNode } from 'react'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { COLOR } from '../constants/color';
 
 interface InputProps {
     label?: string;
@@ -101,9 +102,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: COLOR.BACKGROUND,
         borderRadius: 8,
-        backgroundColor: '#fff',
+        backgroundColor: COLOR.BACKGROUND,
         minHeight: 48,
         position: 'relative',
     },

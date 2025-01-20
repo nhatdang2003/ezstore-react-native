@@ -1,19 +1,30 @@
 import { View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import Input from '@/src/components/Input'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import CustomButton from '@/src/components/CustomButton';
 import { COLOR } from '@/src/constants/color';
 import Checkbox from '@/src/components/Checkbox';
+import DatePicker from '../components/Datepicker';
+import Select from '../components/Select';
 
 const WelcomeScreen = () => {
-    const router = useRouter()
     const [input, setInput] = useState({
         email: '',
         password: '',
         remember: false
     })
+    const [date, setDate] = useState(new Date())
+    const [selectedValue, setSelectedValue] = useState('');
+
+    const options = [
+        { label: 'Option 1', value: '1' },
+        { label: 'Option 2', value: '2' },
+        { label: 'Option 3', value: '3' },
+    ];
+    console.log(selectedValue)
+    console.log(date)
 
     return (
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -40,6 +51,18 @@ const WelcomeScreen = () => {
 
             <Checkbox checked={input.remember} onCheck={(checked) => setInput({ ...input, remember: checked })}
                 label='Ghi nhớ mật khẩu' />
+
+            <DatePicker
+                value={date}
+                onChange={setDate}
+            />
+
+            <Select
+                value={selectedValue}
+                onChange={setSelectedValue}
+                options={options}
+                label="Select Option"
+            />
         </View>
     )
 }

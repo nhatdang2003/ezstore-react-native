@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import CloseKeyboard from '@/src/components/CloseKeyboard';
@@ -7,7 +7,10 @@ import { View } from 'react-native';
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
+    const router = useRouter()
+
     useEffect(() => {
+        // router.navigate('/(auth)/login')
         SplashScreen.hideAsync()
     }, [])
 
