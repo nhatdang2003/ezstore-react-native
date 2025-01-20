@@ -8,6 +8,8 @@ import { COLOR } from '@/src/constants/color';
 import Checkbox from '@/src/components/Checkbox';
 import DatePicker from '../components/Datepicker';
 import Select from '../components/Select';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+
 
 const WelcomeScreen = () => {
     const [input, setInput] = useState({
@@ -61,6 +63,7 @@ const WelcomeScreen = () => {
                 value={selectedValue}
                 onChange={setSelectedValue}
                 options={options}
+                icon={<FontAwesome6 name="person" size={24} color="black" />}
                 label="Select Option"
             />
         </View>
