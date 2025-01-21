@@ -10,7 +10,7 @@ export default function RootLayout() {
     const router = useRouter()
 
     useEffect(() => {
-        // router.navigate('/(auth)/login')
+        router.navigate('/(auth)/login')
         SplashScreen.hideAsync()
     }, [])
 

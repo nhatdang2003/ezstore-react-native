@@ -1,4 +1,4 @@
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native'
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, KeyboardTypeOptions } from 'react-native'
 import React, { useState } from 'react'
 import { ReactNode } from 'react'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -14,6 +14,7 @@ interface InputProps {
     leftIcon?: ReactNode;
     rightIcon?: ReactNode;
     type?: 'text' | 'password';
+    keyboardType?: KeyboardTypeOptions;
 }
 
 const Input = ({
@@ -24,7 +25,8 @@ const Input = ({
     error,
     leftIcon,
     rightIcon,
-    type = 'text'
+    type = 'text',
+    keyboardType = 'default'
 }: InputProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -76,6 +78,7 @@ const Input = ({
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     placeholderTextColor="#999"
+                    keyboardType={keyboardType}
                 />
                 {(passwordIcon || rightIcon) && (
                     <View style={styles.rightIcon}>
