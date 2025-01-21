@@ -18,6 +18,15 @@ export interface LoginRequest {
     password: string;
 }
 
+export interface ActiveCodeRequest {
+    email: string;
+}
+
+export interface VerifyActivationRequest {
+    email: string;
+    activationCode: string;
+}
+
 // Optional: Response type for the registration API
 export interface RegisterResponse {
     success: boolean;
