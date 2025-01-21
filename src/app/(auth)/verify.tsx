@@ -5,7 +5,7 @@ import OtpInput from '@/src/components/OtpInput'
 import { COLOR } from '@/src/constants/color'
 import CustomButton from '@/src/components/CustomButton'
 import ErrorMessageInput from '@/src/components/ErrorMessageInput'
-import { getActiveCode, verifyActivation } from '@/src/services/auth.service'
+import { getActiveCode, postVerifyActivation, postVerifyRecoverPassword, postRecoverPassword } from '@/src/services/auth.service'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import LoadingOverlay from '@/src/components/LoadingOverlay'
 
@@ -15,48 +15,64 @@ const VerifyActivationScreen = () => {
     const [otp, setOtp] = useState('')
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const { type } = useLocalSearchParams<{ type: string }>()
 
     const handleVerify = useCallback(async (code: string) => {
-        if (code.length === 6) {
-            setIsLoading(true)
-            try {
-                Keyboard.dismiss()
-                const response = await verifyActivation({
-                    email: email || '',
-                    activationCode: code
-                })
-                // @ts-ignore
-                if (response.statusCode === 200) {
-                    router.replace('/(tabs)')
+        if (code.length !== 6) return;
+
+        setIsLoading(true);
+        Keyboard.dismiss();
+
+        try {
+            const verifyResponse = type === 'forget_password'
+                ? await postVerifyRecoverPassword({ email: email || '', resetCode: code })
+                : await postVerifyActivation({ email: email || '', activationCode: code });
+
+            // @ts-ignore
+            if (verifyResponse.statusCode === 200) {
+                if (type === 'forget_password') {
+                    router.replace({
+                        pathname: '/(auth)/reset_password',
+                        params: { email: email || '', code: code }
+                    });
                 } else {
-                    setError('Mã xác thực không đúng')
-                    setOtp('')
+                    router.replace('/(tabs)');
                 }
-            } catch (error) {
-                console.log(error)
-                setError('Có lỗi xảy ra, vui lòng thử lại')
-                setOtp('')
-            } finally {
-                setIsLoading(false)
+                return;
             }
+
+            setError('Mã xác thực không đúng');
+            setOtp('');
+        } catch (error) {
+            console.log(error);
+            setError('Có lỗi xảy ra, vui lòng thử lại');
+            setOtp('');
+        } finally {
+            setIsLoading(false);
         }
-    }, [email, router])
+    }, [email, router, type]);
 
     const handleResendCode = async () => {
-        setIsLoading(true)
+        setIsLoading(true);
         try {
-            const response = await getActiveCode({ email })
+            const response = type === 'forget_password'
+                ? await postRecoverPassword({ email: email || '' })
+                : await getActiveCode({ email: email || '' });
+
             // @ts-ignore
             if (response.statusCode === 200) {
-                setError('')
-                setOtp('')
+                setError('');
+                setOtp('');
+            } else {
+                setError('Có lỗi xảy ra, vui lòng thử lại');
             }
         } catch (error) {
-            setError('Không thể gửi lại mã, vui lòng thử lại sau')
+            console.log(error);
+            setError('Có lỗi xảy ra, vui lòng thử lại');
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }
+    };
 
     return (
         <View style={styles.container}>

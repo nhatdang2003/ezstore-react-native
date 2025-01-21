@@ -27,6 +27,22 @@ export interface VerifyActivationRequest {
     activationCode: string;
 }
 
+export interface RecoverPasswordRequest {
+    email: string;
+}
+
+export interface VerifyRecoverPasswordRequest {
+    email: string;
+    resetCode: string;
+}
+
+export interface ResetPasswordRequest {
+    email: string;
+    resetCode: string;
+    newPassword: string;
+    confirmPassword: string;
+}
+
 // Optional: Response type for the registration API
 export interface RegisterResponse {
     success: boolean;

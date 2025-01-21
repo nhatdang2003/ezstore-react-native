@@ -102,7 +102,7 @@ const RegisterScreen = () => {
                     // @ts-ignore
                     if (activeCodeResponse.statusCode === 200) {
                         router.push({
-                            pathname: '/(auth)/verify_activation',
+                            pathname: '/(auth)/verify',
                             params: { email: input.email }
                         });
                     }

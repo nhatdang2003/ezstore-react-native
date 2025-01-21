@@ -80,6 +80,10 @@ const LoginScreen = () => {
         }
     }
 
+    const handleForgotPassword = () => {
+        router.navigate('/(auth)/forget_password')
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.logoContainer}>
@@ -113,11 +117,20 @@ const LoginScreen = () => {
                     <ErrorMessageInput message={errors.password} />
                 </View>
 
-                <Checkbox
-                    checked={input.remember}
-                    onCheck={(checked) => setInput({ ...input, remember: checked })}
-                    label="Ghi nhớ mật khẩu"
-                />
+                <View style={styles.forgotPasswordContainer}>
+                    <Checkbox
+                        checked={input.remember}
+                        onCheck={(checked) => setInput({ ...input, remember: checked })}
+                        label="Ghi nhớ mật khẩu"
+                    />
+                    <CustomButton
+                        title="Quên mật khẩu?"
+                        variant="ghost"
+                        style={styles.forgotButton}
+                        textStyle={styles.forgotButtonText}
+                        onPress={handleForgotPassword}
+                    />
+                </View>
 
                 <CustomButton
                     onPress={handleLogin}
@@ -199,6 +212,20 @@ const styles = StyleSheet.create({
         color: COLOR.PRIMARY,
         fontWeight: "600",
         textDecorationLine: "underline",
+    },
+    forgotPasswordContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    forgotButton: {
+        minWidth: 0,
+        paddingHorizontal: 0,
+    },
+    forgotButtonText: {
+        color: COLOR.PRIMARY,
+        fontSize: 14,
+        textDecorationLine: 'underline',
     },
 });
 
