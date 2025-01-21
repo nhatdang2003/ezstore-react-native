@@ -21,64 +21,58 @@ const LoginScreen = () => {
     const [errors, setErrors] = useState({
         email: '',
         password: ''
-    })
+    });
 
-    const validateEmail = (email: string) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email) {
-            return 'Email là bắt buộc';
-        }
-        if (!emailRegex.test(email)) {
-            return 'Email không đúng định dạng';
-        }
-        return '';
-    }
+    const [isLoading, setIsLoading] = useState(false);
 
-    const validatePassword = (password: string) => {
-        if (!password) {
-            return 'Mật khẩu là bắt buộc';
-        }
-        return '';
-    }
+    const validateForm = () => {
+        const emailError = !input.email.trim()
+            ? 'Email là bắt buộc'
+            : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)
+                ? 'Email không đúng định dạng'
+                : '';
 
-    const handleInputChange = (field: 'email' | 'password', value: string) => {
-        setInput(prev => ({ ...prev, [field]: value }))
-    }
-
-    const isFormInput = useMemo(() => {
-        return input.email.trim() !== '' &&
-            input.password.trim() !== ''
-    }, [input.email, input.password])
-
-    const [isLoading, setIsLoading] = useState(false)
-
-    const handleLogin = async () => {
-        const emailError = validateEmail(input.email);
-        const passwordError = validatePassword(input.password);
+        const passwordError = !input.password.trim()
+            ? 'Mật khẩu là bắt buộc'
+            : '';
 
         setErrors({
             email: emailError,
             password: passwordError
         });
 
-        if (!emailError && !passwordError) {
-            setIsLoading(true);
-            try {
-                const response = await postLogin({
-                    email: input.email,
-                    password: input.password
-                });
-                console.log(response)
-                if (response.data) {
-                    router.navigate('/(tabs)');
-                }
-            } catch (error) {
-                console.log(error)
-            } finally {
-                setIsLoading(false);
+        return !emailError && !passwordError;
+    };
+
+    const handleLogin = async () => {
+        if (!validateForm()) return;
+
+        setIsLoading(true);
+        try {
+            const response = await postLogin({
+                email: input.email,
+                password: input.password
+            });
+
+            // @ts-ignore
+            if (response.statusCode === 200) {
+                router.replace('/(tabs)');
+            } else {
+                setErrors(prev => ({
+                    ...prev,
+                    password: 'Email hoặc mật khẩu không đúng'
+                }));
             }
+        } catch (error) {
+            console.log(error);
+            setErrors(prev => ({
+                ...prev,
+                password: 'Có lỗi xảy ra, vui lòng thử lại'
+            }));
+        } finally {
+            setIsLoading(false);
         }
-    }
+    };
 
     const handleForgotPassword = () => {
         router.navigate('/(auth)/forget_password')
@@ -98,7 +92,10 @@ const LoginScreen = () => {
                 <View>
                     <Input
                         value={input.email}
-                        onChangeText={(text) => handleInputChange('email', text)}
+                        onChangeText={(text) => {
+                            setInput(prev => ({ ...prev, email: text }));
+                            setErrors(prev => ({ ...prev, email: '' }));
+                        }}
                         placeholder="Email"
                         leftIcon={<MaterialCommunityIcons name="email-outline" size={24} />}
                         keyboardType="email-address"
@@ -109,7 +106,10 @@ const LoginScreen = () => {
                 <View>
                     <Input
                         value={input.password}
-                        onChangeText={(text) => handleInputChange('password', text)}
+                        onChangeText={(text) => {
+                            setInput(prev => ({ ...prev, password: text }));
+                            setErrors(prev => ({ ...prev, password: '' }));
+                        }}
                         placeholder="Mật khẩu"
                         type="password"
                         leftIcon={<MaterialCommunityIcons name="lock-outline" size={24} />}
@@ -136,7 +136,7 @@ const LoginScreen = () => {
                     onPress={handleLogin}
                     title="Đăng nhập"
                     style={styles.loginButton}
-                    disabled={!isFormInput || isLoading}
+                    disabled={isLoading}
                 />
 
                 <View style={styles.dividerContainer}>
@@ -160,8 +160,8 @@ const LoginScreen = () => {
                         Đăng ký
                     </Text>
                 </View>
-            </View >
-        </View >
+            </View>
+        </View>
     );
 };
 

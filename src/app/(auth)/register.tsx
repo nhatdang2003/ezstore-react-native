@@ -130,7 +130,10 @@ const RegisterScreen = () => {
                     <View>
                         <Input
                             value={input.email}
-                            onChangeText={(text) => handleInputChange('email', text)}
+                            onChangeText={(text) => {
+                                setInput(prev => ({ ...prev, email: text }));
+                                setErrors(prev => ({ ...prev, email: '' }));
+                            }}  
                             placeholder="Email"
                             leftIcon={<MaterialCommunityIcons name="email-outline" size={24} />}
                             keyboardType="email-address"
@@ -141,7 +144,10 @@ const RegisterScreen = () => {
                     <View>
                         <Input
                             value={input.password}
-                            onChangeText={(text) => handleInputChange('password', text)}
+                            onChangeText={(text) => {
+                                setInput(prev => ({ ...prev, password: text }));
+                                setErrors(prev => ({ ...prev, password: '' }));
+                            }}
                             placeholder="Mật khẩu"
                             type="password"
                             leftIcon={<MaterialCommunityIcons name="lock-outline" size={24} />}
@@ -153,7 +159,10 @@ const RegisterScreen = () => {
                         <View style={styles.nameField}>
                             <Input
                                 value={input.lastName}
-                                onChangeText={(text) => handleInputChange('lastName', text)}
+                                onChangeText={(text) => {
+                                    setInput(prev => ({ ...prev, lastName: text }));
+                                    setErrors(prev => ({ ...prev, lastName: '' }));
+                                }}
                                 placeholder="Họ"
                                 leftIcon={<MaterialCommunityIcons name="account-outline" size={24} />}
                             />
@@ -163,7 +172,10 @@ const RegisterScreen = () => {
                         <View style={styles.nameField}>
                             <Input
                                 value={input.firstName}
-                                onChangeText={(text) => handleInputChange('firstName', text)}
+                                onChangeText={(text) => {
+                                    setInput(prev => ({ ...prev, firstName: text }));
+                                    setErrors(prev => ({ ...prev, firstName: '' }));
+                                }}
                                 placeholder="Tên"
                                 leftIcon={<MaterialCommunityIcons name="account-outline" size={24} />}
                             />
@@ -173,13 +185,19 @@ const RegisterScreen = () => {
 
                     <DatePicker
                         value={input.birthDate}
-                        onChange={(date) => handleInputChange('birthDate', date)}
+                        onChange={(date) => {
+                            setInput(prev => ({ ...prev, birthDate: date }));
+                            setErrors(prev => ({ ...prev, birthDate: '' }));
+                        }}
                         placeholder="Ngày sinh"
                     />
 
                     <Select
                         value={input.gender}
-                        onChange={(value) => handleInputChange('gender', value)}
+                        onChange={(value) => {
+                            setInput(prev => ({ ...prev, gender: value }));
+                            setErrors(prev => ({ ...prev, gender: '' }));
+                        }}
                         options={genderOptions}
                         placeholder="Giới tính"
                         icon={<MaterialCommunityIcons name="gender-male-female" size={24} />}
