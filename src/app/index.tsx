@@ -1,4 +1,4 @@
-import { View } from 'react-native'
+import { ScrollView, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'expo-router'
 import Input from '@/src/components/Input'
@@ -6,11 +6,90 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import CustomButton from '@/src/components/CustomButton';
 import { COLOR } from '@/src/constants/color';
 import Checkbox from '@/src/components/Checkbox';
-import DatePicker from '../components/Datepicker';
-import Select from '../components/Select';
+import DatePicker from '@/src/components/Datepicker';
+import Select from '@/src/components/Select';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import OtpInput from '../components/OtpInput';
+import OtpInput from '@/src/components/OtpInput';
+import ProductCard from '@/src/components/ProductCard';
+import Grid from '@/src/components/SectionHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import SectionHeader from '@/src/components/SectionHeader';
+import CategoryCarousel from '@/src/components/CategoryCarousel';
+import HomeCarousel from '../components/HomeCarousel';
+import CategoryCard from '@/src/components/CategoryCard';
+const data = [
+    {
+        id: '1',
+        image: 'https://via.placeholder.com/150',
+        title: 'Product 1',
+        price: 100,
+        rating: 4.5,
+        priceDiscount: 2000000,
+    },
+    {
+        id: '2',
+        image: 'https://via.placeholder.com/150',
+        title: 'Product 2',
+        price: 100,
+        rating: 4.5,
+        priceDiscount: 2000000,
+    },
+    {
+        id: '3',
+        image: 'https://via.placeholder.com/150',
+        title: 'Product 3',
+        price: 100,
+        rating: 4.5,
+        priceDiscount: 2000000,
+    },
+    {
+        id: '4',
+        image: 'https://via.placeholder.com/150',
+        title: 'Product 4',
+        price: 100,
+        rating: 4.5,
+        priceDiscount: 2000000,
+    },
+]
 
+interface Category {
+    id: string;
+    title: string;
+    image: string;
+}
+
+const categories: Category[] = [
+    {
+        id: '1',
+        title: 'Quần jean',
+        image: 'https://path-to-your-image/jean.jpg'
+    },
+    {
+        id: '2',
+        title: 'Chân váy',
+        image: 'https://path-to-your-image/dress.jpg'
+    },
+    {
+        id: '3',
+        title: 'Áo sơ mi & Áo kiểu',
+        image: 'https://path-to-your-image/shirt.jpg'
+    },
+    {
+        id: '4',
+        title: 'Áo sơ mi & Áo kiểu',
+        image: 'https://path-to-your-image/shirt.jpg'
+    },
+    {
+        id: '5',
+        title: 'Áo sơ mi & Áo kiểu',
+        image: 'https://path-to-your-image/shirt.jpg'
+    },
+    {
+        id: '6',
+        title: 'Áo sơ mi & Áo kiểu',
+        image: 'https://path-to-your-image/shirt.jpg'
+    },
+];
 
 const WelcomeScreen = () => {
     const [input, setInput] = useState({
@@ -33,46 +112,16 @@ const WelcomeScreen = () => {
     console.log(otp)
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
-            <Input onChangeText={(text) => setInput({ ...input, email: text })} value={input.email} placeholder='Email'
-                leftIcon={<MaterialCommunityIcons name="email-outline" size={24} color="black" />}
-            />
-            <Input onChangeText={(text) => setInput({ ...input, password: text })} value={input.password} placeholder='Mật khẩu'
-                leftIcon={<MaterialCommunityIcons name="lock-outline" size={24} color="black" />}
-                type='password'
-            />
-            <CustomButton onPress={() => alert('hello')} title='Đăng nhập' variant='filled'
-                style={{ backgroundColor: COLOR.PRIMARY }}
-            />
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-                <CustomButton style={{ flex: 1 }} variant='outlined'
-                    onPress={() => { alert('gg') }}>
-                    <MaterialCommunityIcons name="lock-outline" size={24} color="black" />
-                </CustomButton>
-                <CustomButton style={{ flex: 1 }} variant='outlined'
-                    onPress={() => { alert('gg') }}>
-                    <MaterialCommunityIcons name="lock-outline" size={24} color="black" />
-                </CustomButton>
-            </View>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff', padding: 16 }}>
+            <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} showsVerticalScrollIndicator={false}>
+                <HomeCarousel />
+                <CategoryCarousel />
+                <SectionHeader title='Featured' onViewAll={() => { }} data={data} />
+                <View style={{ height: 300 }} />
+                <CategoryCard id='1' image='https://via.placeholder.com/150' title='Product 1' />
+            </ScrollView>
+        </SafeAreaView>
 
-            <Checkbox checked={input.remember} onCheck={(checked) => setInput({ ...input, remember: checked })}
-                label='Ghi nhớ mật khẩu' />
-
-            <DatePicker
-                value={date}
-                onChange={setDate}
-            />
-
-            <Select
-                value={selectedValue}
-                onChange={setSelectedValue}
-                options={options}
-                icon={<FontAwesome6 name="person" size={24} color="black" />}
-                label="Select Option"
-            />
-
-            <OtpInput setValue={setOtp} />
-        </View>
     )
 }
 
