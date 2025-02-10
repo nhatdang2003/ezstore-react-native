@@ -24,7 +24,7 @@ const VerifyUpdateScreen = () => {
         Keyboard.dismiss();
 
         try {
-            const response = await updateUserInfo(userInfo)
+            const response = await updateUserInfo({ ...userInfo, otp: code })
             // @ts-ignore
             if (response.statusCode === 200) {
                 router.back()

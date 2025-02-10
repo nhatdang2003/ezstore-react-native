@@ -5,10 +5,11 @@ export const getUserInfo = () => {
     return axios.get(url)
 }
 
-export const updateUserInfo = (userInfo: any) => {
+export const updateUserInfo = (data: any) => {
     const url = `/api/v1/mobile/users/profiles`
-    return axios.put(url, userInfo)
+    return axios.put(url, data)
 }
+
 
 export const sendOTP = (email: string) => {
     const url = `api/v1/mobile/users/profiles/send-otp`
