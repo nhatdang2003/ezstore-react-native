@@ -22,7 +22,7 @@ export default function RootLayout() {
 
     useEffect(() => {
         if (loaded || error) {
-            // router.navigate('/(auth)/login')
+            router.navigate('/(auth)/login')
             SplashScreen.hideAsync();
         }
     }, [loaded, error]);
@@ -34,15 +34,18 @@ export default function RootLayout() {
     return (
         <CloseKeyboard>
             <View style={{ flex: 1 }}>
-                <Stack screenOptions={{ headerShown: false }}>
+                <Stack>
                     <Stack.Screen name="index" />
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="(auth)/login" />
-                    <Stack.Screen name="(auth)/register" />
-                    <Stack.Screen name="(auth)/forget_password" />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
+                    <Stack.Screen name="(auth)/forget_password" options={{ headerShown: false }} />
+                    <Stack.Screen name="account/details" options={{ title: 'Thông tin chi tiết', headerTitleAlign: 'center' }} />
+                    <Stack.Screen name="account/verify_update" options={{ headerShown: false }} />
                     <Stack.Screen name="+not-found" />
                 </Stack>
             </View>
+
         </CloseKeyboard>
     );
 }

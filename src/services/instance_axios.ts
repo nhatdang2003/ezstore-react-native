@@ -1,13 +1,28 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const backend = Platform.OS === "android"
     ? process.env.EXPO_PUBLIC_ANDROID_API_URL
     : process.env.EXPO_PUBLIC_IOS_API_URL
 
 const instance = axios.create({
-    baseURL: backend
+    baseURL: backend,
 })
+
+// Add a request interceptor
+instance.interceptors.request.use(async function (config) {
+    // Do something before request is sent
+    const access_token = await AsyncStorage.getItem('access_token')
+    if (access_token) {
+        config.headers['Authorization'] = `Bearer ${access_token}`
+    }
+    return config;
+}, function (error) {
+    // Do something with request error
+    return Promise.reject(error);
+});
+
 
 // Add a response interceptor
 instance.interceptors.response.use(function (response) {

@@ -133,7 +133,7 @@ const RegisterScreen = () => {
                             onChangeText={(text) => {
                                 setInput(prev => ({ ...prev, email: text }));
                                 setErrors(prev => ({ ...prev, email: '' }));
-                            }}  
+                            }}
                             placeholder="Email"
                             leftIcon={<MaterialCommunityIcons name="email-outline" size={24} />}
                             keyboardType="email-address"

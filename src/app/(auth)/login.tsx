@@ -9,6 +9,7 @@ import Checkbox from "@/src/components/Checkbox";
 import ErrorMessageInput from "@/src/components/ErrorMessageInput";
 import { postLogin } from "@/src/services/auth.service";
 import SocialButtons from "@/src/components/SocialButtons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LoginScreen = () => {
     const router = useRouter();
@@ -48,14 +49,16 @@ const LoginScreen = () => {
         if (!validateForm()) return;
 
         setIsLoading(true);
+        console.log(input);
         try {
             const response = await postLogin({
                 email: input.email,
                 password: input.password
             });
-
+            console.log(response);
             // @ts-ignore
             if (response.statusCode === 200) {
+                await AsyncStorage.setItem('access_token', response.data.access_token || '')
                 router.replace('/(tabs)');
             } else {
                 setErrors(prev => ({
