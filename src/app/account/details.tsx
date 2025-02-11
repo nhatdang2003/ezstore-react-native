@@ -1,4 +1,4 @@
-import { View, StyleSheet, Text, ScrollView } from 'react-native'
+import { View, StyleSheet, Text, ScrollView, Image, Alert, TouchableOpacity } from 'react-native'
 import React, { useEffect } from 'react'
 import { useRouter } from 'expo-router'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
@@ -8,10 +8,10 @@ import CloseKeyboard from '@/src/components/CloseKeyboard'
 import { FONT } from '@/src/constants/font'
 import Input from '@/src/components/Input'
 import DatePicker from '@/src/components/Datepicker'
-import { getUserInfo, updateUserInfo, sendOTP } from '@/src/services/user.service'
+import { getUserInfo, updateUserInfo, sendOTP, updateAvatar } from '@/src/services/user.service'
 import { GENDER } from '@/src/constants/profile'
 import { format } from "date-fns";
-
+import * as ImagePicker from 'expo-image-picker';
 const ProfileDetails = () => {
     const router = useRouter()
     const [userInfo, setUserInfo] = React.useState({
@@ -20,7 +20,8 @@ const ProfileDetails = () => {
         lastName: '',
         birthDate: new Date(),
         gender: '',
-        phoneNumber: ''
+        phoneNumber: '',
+        avatar: ''
     })
     const [originalUserInfo, setOriginalUserInfo] = React.useState({
         email: '',
@@ -28,7 +29,8 @@ const ProfileDetails = () => {
         lastName: '',
         birthDate: new Date(),
         gender: '',
-        phoneNumber: ''
+        phoneNumber: '',
+        avatar: ''
     })
     const [isEdit, setIsEdit] = React.useState(false)
 
@@ -45,7 +47,8 @@ const ProfileDetails = () => {
                     ? new Date(response.data.birthDate)
                     : new Date(),
                 gender: response.data.gender,
-                phoneNumber: response.data.phoneNumber
+                phoneNumber: response.data.phoneNumber,
+                avatar: response.data.avatar
             })
             setOriginalUserInfo(response.data)
         } else {
@@ -86,11 +89,70 @@ const ProfileDetails = () => {
         }
     }
 
+    const pickImage = async () => {
+        // No permissions request is necessary for launching the image library
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+            base64: true
+        });
 
+        if (!result.canceled) {
+            let base64Img = `data:image/jpg;base64,${result.assets[0].base64}`;
+            // Create form data for upload
+            const formData = new FormData();
+            formData.append('file', base64Img);
+            formData.append('upload_preset', process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string);
+
+            try {
+                // Upload to Cloudinary
+                const response = await fetch(
+                    `https://api.cloudinary.com/v1_1/${process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+                    {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                        },
+                    }
+                );
+
+                const data = await response.json();
+                console.log(data)
+
+                // Update user avatar in state and database
+                if (data.secure_url) {
+                    setUserInfo(prev => ({ ...prev, avatar: data.secure_url }));
+                    const response = await updateAvatar({ avatar: data.secure_url })
+                    // @ts-ignore
+                    if (response.statusCode === 200) {
+                        Alert.alert('Thành công', 'Cập nhật ảnh đại diện thành công');
+                    } else {
+                        console.log(response)
+                        Alert.alert('Lỗi', 'Không thể cập nhật ảnh đại diện');
+                    }
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                Alert.alert('Lỗi', 'Không thể tải ảnh lên');
+            }
+        }
+    };
+
+    const Avatar = () => {
+        return (
+            <View style={styles.avatarContainer}>
+                <TouchableOpacity onPress={pickImage}>
+                    <Image source={{ uri: userInfo.avatar }} style={styles.avatar} />
+                </TouchableOpacity>
+            </View>
+        )
+    }
 
     return (
         <CloseKeyboard>
-
             <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
                 {isEdit ? (
                     <View style={styles.container}>
@@ -98,6 +160,7 @@ const ProfileDetails = () => {
                             <View style={styles.header}>
                                 <Text style={styles.title}>Chỉnh sửa thông tin tài khoản</Text>
                             </View>
+                            <Avatar />
                             <Input
                                 value={userInfo.email}
                                 onChangeText={(text) => setUserInfo(prev => ({ ...prev, email: text }))}
@@ -121,7 +184,6 @@ const ProfileDetails = () => {
                                 value={userInfo.phoneNumber}
                                 onChangeText={(text) => setUserInfo(prev => ({ ...prev, phoneNumber: text }))}
                                 leftIcon={<MaterialCommunityIcons name="phone-outline" size={24} />}
-
                             />
 
                             <View style={styles.buttonContainer}>
@@ -131,7 +193,6 @@ const ProfileDetails = () => {
                                     style={styles.saveButton}
                                 />
                                 <CustomButton
-
                                     title="Hủy"
                                     variant="outlined"
                                     onPress={() => setIsEdit(false)}
@@ -147,6 +208,7 @@ const ProfileDetails = () => {
                             <View style={styles.header}>
                                 <Text style={styles.title}>Thông tin tài khoản</Text>
                             </View>
+                            <Avatar />
                             <View style={styles.infoContainer}>
                                 <View style={styles.infoRow}>
                                     <Text style={styles.infoLabel}>Email:</Text>
@@ -244,6 +306,17 @@ const styles = StyleSheet.create({
     },
     cancelButtonText: {
         color: COLOR.PRIMARY,
+    },
+    avatarContainer: {
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    avatar: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 1,
+        borderColor: COLOR.PRIMARY,
     },
 })
 

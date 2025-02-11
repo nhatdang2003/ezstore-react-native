@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { router, Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import CloseKeyboard from '@/src/components/CloseKeyboard';
@@ -9,6 +9,7 @@ import {
     Lora_400Regular,
     Lora_500Medium
 } from '@expo-google-fonts/lora';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 SplashScreen.preventAutoHideAsync()
 
@@ -19,10 +20,18 @@ export default function RootLayout() {
         [FONT.LORA_MEDIUM]: Lora_500Medium,
     });
 
-
     useEffect(() => {
         if (loaded || error) {
-            router.navigate('/(auth)/login')
+            //check if user is logged in
+            const checkUserLoggedIn = async () => {
+                const access_token = await AsyncStorage.getItem('access_token')
+                if (access_token) {
+                    router.navigate('/(tabs)')
+                } else {
+                    router.navigate('/(auth)/login')
+                }
+            }
+            checkUserLoggedIn()
             SplashScreen.hideAsync();
         }
     }, [loaded, error]);

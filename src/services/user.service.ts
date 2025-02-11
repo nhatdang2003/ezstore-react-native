@@ -10,12 +10,15 @@ export const updateUserInfo = (data: any) => {
     return axios.put(url, data)
 }
 
-
 export const sendOTP = (email: string) => {
     const url = `api/v1/mobile/users/profiles/send-otp`
     return axios.get(url, { params: { email } })
 }
 
+export const updateAvatar = (data: any) => {
+    const url = `api/v1/users/profiles/avatar`
+    return axios.put(url, data)
+}
 
 
 
