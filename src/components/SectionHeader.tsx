@@ -1,12 +1,17 @@
-import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
 import React from 'react'
 import ProductCard from '@/src/components/ProductCard'
 import Feather from '@expo/vector-icons/Feather';
 import { ProductCardProps } from '@/src/types/product.type';
 import { FONT } from '../constants/font';
 
-const SectionHeader = ({ data, title, onViewAll }:
-    { data: ProductCardProps[], title: string, onViewAll: () => void }) => {
+const SectionHeader = ({ data, title, onViewAll, loading }:
+    { 
+        data: ProductCardProps[], 
+        title: string, 
+        onViewAll: () => void,
+        loading?: boolean 
+    }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -15,9 +20,13 @@ const SectionHeader = ({ data, title, onViewAll }:
                     <Feather name="arrow-right" size={24} color="black" />
                 </TouchableOpacity>
             </View>
-            <View style={styles.grid}>
-                {
-                    data.map((item) => (
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#303437" />
+                </View>
+            ) : (
+                <View style={styles.grid}>
+                    {data.map((item) => (
                         <ProductCard
                             key={item.id}
                             id={item.id}
@@ -27,10 +36,10 @@ const SectionHeader = ({ data, title, onViewAll }:
                             rating={item.rating}
                             priceDiscount={item.priceDiscount}
                         />
-                    ))
-                }
-            </View>
-        </View >
+                    ))}
+                </View>
+            )}
+        </View>
     )
 }
 
@@ -57,8 +66,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         flexWrap: 'wrap',
     },
+    loadingContainer: {
+        height: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 })
-
-
 
 export default SectionHeader

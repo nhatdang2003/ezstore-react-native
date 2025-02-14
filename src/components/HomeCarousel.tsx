@@ -19,15 +19,19 @@ interface Slide {
 const slides: Slide[] = [
     {
         id: '1',
-        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1732775286/ao-jumper-1_si9btg.jpg'
+        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1739532055/carousel-1_idge2j.jpg'
     },
     {
         id: '2',
-        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1732775286/ao-jumper-2_jnj3xq.jpg'
+        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1739532056/carousel-2_iwiw0r.jpg'
     },
     {
         id: '3',
-        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1732775286/ao-jumper-3_yatbha.jpg'
+        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1739532056/carousel-3_yiurqg.jpg'
+    },
+    {
+        id: '4',
+        image: 'https://res.cloudinary.com/db9vcatme/image/upload/v1739532056/carousel-4_gh9c4u.jpg'
     }
 ];
 
