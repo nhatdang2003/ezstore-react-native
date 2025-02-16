@@ -6,3 +6,8 @@ export const getCategoriesHomeTab = (): Promise<PaginatedResponse<Category>> => 
     const url = 'api/v1/categories?size=10'
     return axios.get(url)
 }
+
+export const getCategoriesCategoryTab = (): Promise<PaginatedResponse<Category>> => {
+    const url = 'api/v1/categories'
+    return axios.get(url)
+}
