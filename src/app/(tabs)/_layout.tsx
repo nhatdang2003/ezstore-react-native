@@ -18,8 +18,8 @@ export default function TabLayout() {
                 options={{
                     title: 'Trang chủ',
                     headerTitleAlign: 'center',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="home-outline" color={color} size={size} />
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <MaterialCommunityIcons name={focused ? "home" : "home-outline"} color={color} size={size} />
                     ),
                 }}
             />
@@ -29,7 +29,7 @@ export default function TabLayout() {
                     title: 'Danh mục',
                     headerTitleAlign: 'center',
                     tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="menu" color={color} size={size} />
+                        <MaterialCommunityIcons name={"menu"} color={color} size={size} />
                     ),
                 }}
             />
@@ -38,8 +38,8 @@ export default function TabLayout() {
                 options={{
                     title: 'Cửa hàng',
                     headerTitleAlign: 'center',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="shopping-outline" color={color} size={size} />
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <MaterialCommunityIcons name={focused ? "store" : "store-outline"} color={color} size={size} />
                     ),
                 }}
             />
@@ -48,8 +48,8 @@ export default function TabLayout() {
                 options={{
                     title: 'Giỏ hàng',
                     headerTitleAlign: 'center',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="cart-outline" color={color} size={size} />
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <MaterialCommunityIcons name={focused ? "cart" : "cart-outline"} color={color} size={size} />
                     ),
                 }}
             />
@@ -58,8 +58,8 @@ export default function TabLayout() {
                 options={{
                     title: 'Tài khoản',
                     headerTitleAlign: 'center',
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="account-outline" color={color} size={size} />
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <MaterialCommunityIcons name={focused ? "account" : "account-outline"} color={color} size={size} />
                     ),
                 }}
             />
