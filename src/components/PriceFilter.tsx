@@ -6,11 +6,10 @@ import { useFilterStore } from '@/src/store/filterStore'
 
 const PriceFilter = () => {
     const { priceRange, setPriceRange } = useFilterStore()
-    // State local để lưu giá trị tạm thời
+    // Local state to store temporary values
     const [localMin, setLocalMin] = useState(priceRange.min?.toString() || '')
     const [localMax, setLocalMax] = useState(priceRange.max?.toString() || '')
 
-    // Cập nhật state local khi priceRange từ store thay đổi
     useEffect(() => {
         setLocalMin(priceRange.min?.toString() || '')
         setLocalMax(priceRange.max?.toString() || '')

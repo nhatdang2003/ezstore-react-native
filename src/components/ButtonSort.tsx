@@ -10,7 +10,7 @@ const ButtonSort = ({ sort, setSort, open, setOpen }
 
     const handleSort = (value: string) => {
         setSort(value)
-        setOpen(false)  // Đóng dropdown sau khi đã set sort
+        setOpen(false)
     }
 
     return (

@@ -16,7 +16,6 @@ export interface Product {
     images: string[];
 }
 
-
 export interface ProductQueryParams {
     search?: string;
     page: number;

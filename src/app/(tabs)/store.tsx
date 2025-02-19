@@ -8,7 +8,7 @@ import ProductCard from '@/src/components/ProductCard'
 import { Product } from '@/src/types/product.type'
 import { useSegments } from 'expo-router'
 
-// Tách ProductItem component với memo để tránh render lại không cần thiết
+// Seperate ProductItem component with memo to avoid unnecessary re-renders
 const ProductItem = memo(({
     id,
     images,
@@ -42,7 +42,7 @@ const StoreScreen = () => {
     const [loading, setLoading] = useState(false)
     const [hasMore, setHasMore] = useState(true)
 
-    // Tối ưu renderItem với useCallback
+    // Optimize renderItem with useCallback
     const renderItem = useCallback(({ item }: { item: Product }) => (
         <ProductItem
             id={item.id}
@@ -54,10 +54,10 @@ const StoreScreen = () => {
         />
     ), [])
 
-    // Tối ưu keyExtractor với useCallback
+    // Optimize keyExtractor with useCallback
     const keyExtractor = useCallback((item: Product) => `product-${item.id}`, [])
 
-    // Tối ưu renderFooter với useCallback
+    // Optimize renderFooter with useCallback
     const renderFooter = useCallback(() => {
         if (!loading) return null
         return (
@@ -67,7 +67,7 @@ const StoreScreen = () => {
         )
     }, [loading])
 
-    // Hàm load sản phẩm với page cụ thể
+    // Function to load products with a specific page
     const loadProductsWithPage = async (pageNumber: number) => {
         if (loading) return
 
@@ -88,11 +88,9 @@ const StoreScreen = () => {
             const newProducts = response.data.data
             const totalPages = response.data.meta.pages
 
-            // Nếu là trang 0, thay thế toàn bộ danh sách
             if (pageNumber === 0) {
                 setProducts(newProducts)
             } else {
-                // Nếu không phải trang 0, thêm vào danh sách hiện có
                 setProducts(prev => {
                     const existingIds = new Set(prev.map(p => p.id))
                     const uniqueNewProducts = newProducts.filter(p => !existingIds.has(p.id))
@@ -100,10 +98,8 @@ const StoreScreen = () => {
                 })
             }
 
-            // Cập nhật hasMore dựa trên totalPages
             setHasMore(pageNumber < totalPages - 1)
 
-            // Cập nhật page cho lần load tiếp theo
             setPage(pageNumber + 1)
         } catch (error) {
             console.error('Error loading products:', error)
@@ -113,7 +109,6 @@ const StoreScreen = () => {
         }
     }
 
-    // Hàm reset và load lại từ đầu
     const resetAndLoadProducts = async () => {
         setProducts([])
         setPage(0)
@@ -122,7 +117,7 @@ const StoreScreen = () => {
         await loadProductsWithPage(0)
     }
 
-    // Xử lý khi filter thay đổi
+    // Handle when filter changes
     useEffect(() => {
         if (isFilterChanged && isStoreScreen) {
             resetAndLoadProducts()
@@ -130,7 +125,7 @@ const StoreScreen = () => {
         }
     }, [isFilterChanged, isStoreScreen])
 
-    // Xử lý khi filter được reset
+    // Handle when filter is reset
     useEffect(() => {
         if (isFilterReset && isStoreScreen && !isFilterChanged) {
             resetAndLoadProducts()
@@ -138,21 +133,20 @@ const StoreScreen = () => {
         }
     }, [isFilterReset, isStoreScreen])
 
-    // Xử lý khi sort thay đổi
+    // Handler when sort changes
     useEffect(() => {
         if (isStoreScreen) {
             resetAndLoadProducts()
         }
     }, [sort])
 
-    // Reset dropdown và sort khi vào trang store
+    // Reset dropdown when entering the store page
     useEffect(() => {
         if (isStoreScreen) {
-            setOpen(false)  // Đóng dropdown
+            setOpen(false)
         }
     }, [isStoreScreen])
 
-    // Xử lý load more
     const handleLoadMore = useCallback(() => {
         if (!loading && hasMore) {
             loadProductsWithPage(page)
