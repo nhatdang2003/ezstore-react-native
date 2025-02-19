@@ -124,15 +124,15 @@ const StoreScreen = () => {
 
     // Xử lý khi filter thay đổi
     useEffect(() => {
-        if (isFilterChanged) {
+        if (isFilterChanged && isStoreScreen) {
             resetAndLoadProducts()
             filterStore.setIsFilterChanged(false)
         }
-    }, [isFilterChanged])
+    }, [isFilterChanged, isStoreScreen])
 
     // Xử lý khi filter được reset
     useEffect(() => {
-        if (isFilterReset && isStoreScreen) {
+        if (isFilterReset && isStoreScreen && !isFilterChanged) {
             resetAndLoadProducts()
             filterStore.setIsFilterReset(false)
         }

@@ -5,14 +5,23 @@ import { Category } from '@/src/types/category.type'
 import CategoryCard from '@/src/components/CategoryCard'
 import { COLOR } from '@/src/constants/color'
 import { FONT } from '@/src/constants/font'
+import { useSegments } from 'expo-router'
+import { useFilterStore } from '@/src/store/filterStore'
+import { router } from 'expo-router'
 
 const CategoryTab = () => {
+    const segments = useSegments();
+    const isCategoryScreen = segments[1] === 'category';
+
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(true)
+    const { categories: categoriesStore, setCategories: setCategoriesStore } = useFilterStore();
 
     useEffect(() => {
-        fetchCategories()
-    }, [])
+        if (isCategoryScreen) {
+            fetchCategories()
+        }
+    }, [isCategoryScreen])
 
     const fetchCategories = async () => {
         setLoading(true)
@@ -26,6 +35,11 @@ const CategoryTab = () => {
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleCategoryPress = (categoryId: string) => {
+        setCategoriesStore([...categoriesStore, parseInt(categoryId)])
+        router.navigate('/(tabs)/store')
     }
 
     if (loading) {
@@ -58,6 +72,7 @@ const CategoryTab = () => {
                                 id={category.id.toString()}
                                 image={category.imageUrl}
                                 title={category.name}
+                                onPress={() => handleCategoryPress(category.id.toString())}
                             />
                         ))}
                     </View>

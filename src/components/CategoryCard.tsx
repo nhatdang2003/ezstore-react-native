@@ -12,16 +12,17 @@ const CategoryCard = ({
     id,
     image,
     title,
+    onPress
 }: {
     id: string;
     image: string;
     title: string;
+    onPress: () => void;
 }) => {
     return (
         <TouchableOpacity
             style={styles.container}
-
-            onPress={() => { }}
+            onPress={onPress}
             activeOpacity={0.8}
         >
             <Image
