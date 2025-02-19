@@ -1,6 +1,81 @@
 import axios from '@/src/services/instance_axios';
 import { PaginatedResponse } from '@/src/types/response.type';
-import { Product } from '@/src/types/product.type';
+import { Product, ProductQueryParams } from '@/src/types/product.type';
+
+export const getProducts = async ({
+    search,
+    page,
+    size = 10,
+    categories,
+    minPrice,
+    maxPrice,
+    rating,
+    colors,
+    sizes,
+    sort,
+}: ProductQueryParams): Promise<PaginatedResponse<Product>> => {
+    let url = `api/v1/products?page=${page}&size=${size}`;
+
+    // Add search filter
+    if (search) {
+        url += `&filter=name~'${search}'`;
+    }
+
+    // Add categories filter
+    if (categories && categories.length > 0) {
+        url += `&filter=category.id in [${categories.join(',')}]`;
+    }
+
+    // Add colors filter
+    if (colors && colors.length > 0) {
+        const colorFilters = colors
+            .map(color => `variants.color~'${color}'`)
+            .join(" or ");
+        url += `&filter=(${colorFilters})`;
+    }
+
+    // Add sizes filter
+    if (sizes && sizes.length > 0) {
+        const sizeFilters = sizes
+            .map(size => `variants.size~'${size}'`)
+            .join(" or ");
+        url += `&filter=(${sizeFilters})`;
+    }
+
+    // Add price range filters
+    if (minPrice) {
+        url += `&minPrice=${minPrice}`;
+    }
+    if (maxPrice) {
+        url += `&maxPrice=${maxPrice}`;
+    }
+
+    // Add rating filter
+    if (rating && rating.length > 0) {
+        const minRating = Math.min(...rating);
+        url += `&averageRating=${minRating}`;
+    }
+
+    // Add sorting
+    if (sort) {
+        switch (sort) {
+            case 'price-asc':
+                url += '&sortField=minPriceWithDiscount&sortOrder=asc';
+                break;
+            case 'price-desc':
+                url += '&sortField=minPriceWithDiscount&sortOrder=desc';
+                break;
+            case 'newest':
+                url += '&sortField=createdAt&sortOrder=desc';
+                break;
+            case 'popular':
+                url += '&isBestSeller=true';
+                break;
+        }
+    }
+
+    return axios.get(url);
+};
 
 export const getFeaturedProducts = (): Promise<PaginatedResponse<Product>> => {
     const url = `api/v1/products?filter=isFeatured&size=8`
