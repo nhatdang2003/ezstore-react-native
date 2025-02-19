@@ -1,17 +1,27 @@
 import { View, Text, StyleSheet } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FONT } from '@/src/constants/font'
 import Input from '@/src/components/Input'
 import { useFilterStore } from '@/src/store/filterStore'
+
 const PriceFilter = () => {
     const { priceRange, setPriceRange } = useFilterStore()
+    // State local để lưu giá trị tạm thời
+    const [localMin, setLocalMin] = useState(priceRange.min?.toString() || '')
+    const [localMax, setLocalMax] = useState(priceRange.max?.toString() || '')
 
-    const handlePriceFromChange = (text: string) => {
-        setPriceRange({ ...priceRange, min: text ? parseInt(text) : '' })
+    // Cập nhật state local khi priceRange từ store thay đổi
+    useEffect(() => {
+        setLocalMin(priceRange.min?.toString() || '')
+        setLocalMax(priceRange.max?.toString() || '')
+    }, [priceRange])
+
+    const handlePriceFromEnd = () => {
+        setPriceRange({ ...priceRange, min: localMin ? parseInt(localMin) : '' })
     }
 
-    const handlePriceToChange = (text: string) => {
-        setPriceRange({ ...priceRange, max: text ? parseInt(text) : '' })
+    const handlePriceToEnd = () => {
+        setPriceRange({ ...priceRange, max: localMax ? parseInt(localMax) : '' })
     }
 
     return (
@@ -19,13 +29,23 @@ const PriceFilter = () => {
             <Text style={styles.title}>Khoảng giá</Text>
             <View style={styles.priceContainer}>
                 <View style={styles.priceInput}>
-                    <Input placeholder='Từ' value={priceRange.min?.toString() || ''}
-                        onChangeText={handlePriceFromChange} keyboardType="numeric" />
+                    <Input
+                        placeholder='Từ'
+                        value={localMin}
+                        onChangeText={setLocalMin}
+                        onEndEditing={handlePriceFromEnd}
+                        keyboardType="numeric"
+                    />
                 </View>
                 <Text style={styles.priceSeparator}>-</Text>
                 <View style={styles.priceInput}>
-                    <Input placeholder='Đến' value={priceRange.max?.toString() || ''}
-                        onChangeText={handlePriceToChange} keyboardType="numeric" />
+                    <Input
+                        placeholder='Đến'
+                        value={localMax}
+                        onChangeText={setLocalMax}
+                        onEndEditing={handlePriceToEnd}
+                        keyboardType="numeric"
+                    />
                 </View>
             </View>
         </View>

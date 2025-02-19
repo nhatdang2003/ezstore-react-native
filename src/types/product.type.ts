@@ -15,3 +15,17 @@ export interface Product {
     averageRating: number;
     images: string[];
 }
+
+
+export interface ProductQueryParams {
+    search?: string;
+    page: number;
+    size?: number;
+    categories?: number[];
+    minPrice?: number | string;
+    maxPrice?: number | string;
+    rating?: number[];
+    colors?: string[];
+    sizes?: string[];
+    sort?: string;
+}

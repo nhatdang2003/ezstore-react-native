@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native'
-import React, { useState } from 'react'
+import React from 'react'
 import CustomButton from '@/src/components/CustomButton'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
@@ -7,6 +7,11 @@ const width = Dimensions.get('window').width
 
 const ButtonSort = ({ sort, setSort, open, setOpen }
     : { sort: string, setSort: (sort: string) => void, open: boolean, setOpen: (open: boolean) => void }) => {
+
+    const handleSort = (value: string) => {
+        setSort(value)
+        setOpen(false)  // Đóng dropdown sau khi đã set sort
+    }
 
     return (
         <>
@@ -20,26 +25,26 @@ const ButtonSort = ({ sort, setSort, open, setOpen }
             />
             {open && (
                 <View style={styles.dropdown}>
-                    <TouchableOpacity style={styles.option} onPress={() => setSort('price-asc')}>
+                    <TouchableOpacity style={styles.option} onPress={() => handleSort('price-asc')}>
                         <Text style={{ fontWeight: sort === 'price-asc' ? 'bold' : 'normal' }}>
                             Giá: Thấp đến cao
                         </Text>
                         {sort === 'price-asc' &&
                             <MaterialCommunityIcons name='check' size={16} color='black' />}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.option} onPress={() => setSort('price-desc')}>
+                    <TouchableOpacity style={styles.option} onPress={() => handleSort('price-desc')}>
                         <Text style={{ fontWeight: sort === 'price-desc' ? 'bold' : 'normal' }}>
                             Giá: Cao đến thấp
                         </Text>
                         {sort === 'price-desc' && <MaterialCommunityIcons name='check' size={16} color='black' />}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.option} onPress={() => setSort('newest')}>
+                    <TouchableOpacity style={styles.option} onPress={() => handleSort('newest')}>
                         <Text style={{ fontWeight: sort === 'newest' ? 'bold' : 'normal' }}>
                             Mới nhất
                         </Text>
                         {sort === 'newest' && <MaterialCommunityIcons name='check' size={16} color='black' />}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.option} onPress={() => setSort('popular')}>
+                    <TouchableOpacity style={styles.option} onPress={() => handleSort('popular')}>
                         <Text style={{ fontWeight: sort === 'popular' ? 'bold' : 'normal' }}>
                             Phổ biến nhất
                         </Text>

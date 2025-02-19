@@ -12,6 +12,11 @@ const FilterScreen = () => {
     const router = useRouter()
     const { resetFilters } = useFilterStore();
 
+    const handleResetFilters = () => {
+        resetFilters();
+        router.back()
+    }
+
     const filterComponents = [
         <CategoryFilter key="category" />,
         <ColorFilter key="color" />,
@@ -19,7 +24,7 @@ const FilterScreen = () => {
         <PriceFilter key="price" />,
         <RatingFilter key="rating" />,
         <View key="buttons" style={{ flexDirection: 'row', gap: 16 }}>
-            <CustomButton variant='filled' title='Đặt lại' onPress={resetFilters}
+            <CustomButton variant='filled' title='Đặt lại' onPress={handleResetFilters}
                 textStyle={{ color: 'white' }}
                 style={{ flex: 1, backgroundColor: 'black' }} />
             <CustomButton variant='outlined' title='Hủy' onPress={() => router.back()}

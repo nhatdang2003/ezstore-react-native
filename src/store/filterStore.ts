@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface FilterState {
+export interface FilterState {
     categories: number[];
     colors: string[];
     sizes: string[];
@@ -9,6 +9,8 @@ interface FilterState {
         max: number | string;
     };
     rating: number[];
+    isFilterChanged: boolean;
+    isFilterReset: boolean;
 }
 
 interface FilterStore extends FilterState {
@@ -18,6 +20,8 @@ interface FilterStore extends FilterState {
     setPriceRange: (range: { min: number | string; max: number | string }) => void;
     setRating: (rating: number[]) => void;
     resetFilters: () => void;
+    setIsFilterChanged: (value: boolean) => void;
+    setIsFilterReset: (value: boolean) => void;
 }
 
 const initialState: FilterState = {
@@ -26,14 +30,37 @@ const initialState: FilterState = {
     sizes: [],
     priceRange: { min: '', max: '' },
     rating: [],
+    isFilterChanged: false,
+    isFilterReset: false,
 };
 
 export const useFilterStore = create<FilterStore>((set) => ({
     ...initialState,
-    setCategories: (categories) => set({ categories }),
-    setColors: (colors) => set({ colors }),
-    setSizes: (sizes) => set({ sizes }),
-    setPriceRange: (priceRange) => set({ priceRange }),
-    setRating: (rating) => set({ rating }),
-    resetFilters: () => set(initialState),
+    setCategories: (categories) => set((state) => ({
+        categories,
+        isFilterChanged: true
+    })),
+    setColors: (colors) => set((state) => ({
+        colors,
+        isFilterChanged: true
+    })),
+    setSizes: (sizes) => set((state) => ({
+        sizes,
+        isFilterChanged: true
+    })),
+    setPriceRange: (priceRange) => set((state) => ({
+        priceRange,
+        isFilterChanged: true
+    })),
+    setRating: (rating) => set((state) => ({
+        rating,
+        isFilterChanged: true
+    })),
+    resetFilters: () => set({
+        ...initialState,
+        isFilterReset: true,
+        isFilterChanged: false
+    }),
+    setIsFilterChanged: (value) => set({ isFilterChanged: value }),
+    setIsFilterReset: (value) => set({ isFilterReset: value }),
 }));

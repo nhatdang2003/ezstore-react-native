@@ -9,6 +9,7 @@ interface InputProps {
     placeholder?: string;
     value: string;
     onChangeText: (text: string) => void;
+    onEndEditing?: () => void;
     secureTextEntry?: boolean;
     error?: string;
     leftIcon?: ReactNode;
@@ -22,6 +23,7 @@ const Input = ({
     placeholder,
     value,
     onChangeText,
+    onEndEditing,
     error,
     leftIcon,
     rightIcon,
@@ -74,6 +76,7 @@ const Input = ({
                     placeholder={placeholder}
                     value={value}
                     onChangeText={onChangeText}
+                    onEndEditing={onEndEditing}
                     secureTextEntry={secureTextEntry}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
