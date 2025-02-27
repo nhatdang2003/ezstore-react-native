@@ -1,27 +1,28 @@
 import { SafeAreaView, ScrollView, Text, View, StyleSheet, ActivityIndicator } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { getCategoriesCategoryTab } from '@/src/services/category.service'
 import { Category } from '@/src/types/category.type'
 import CategoryCard from '@/src/components/CategoryCard'
 import { COLOR } from '@/src/constants/color'
 import { FONT } from '@/src/constants/font'
-import { useSegments } from 'expo-router'
+import { useFocusEffect } from 'expo-router'
 import { useFilterStore } from '@/src/store/filterStore'
 import { router } from 'expo-router'
 
 const CategoryTab = () => {
-    const segments = useSegments();
-    const isCategoryScreen = segments[1] === 'category';
-
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(true)
     const { categories: categoriesStore, setCategories: setCategoriesStore } = useFilterStore();
+    const [hasFetched, setHasFetched] = useState(false);
 
-    useEffect(() => {
-        if (isCategoryScreen) {
-            fetchCategories()
-        }
-    }, [isCategoryScreen])
+    useFocusEffect(
+        useCallback(() => {
+            if (!hasFetched) {
+                fetchCategories();
+                setHasFetched(true);
+            }
+        }, [hasFetched])
+    )
 
     const fetchCategories = async () => {
         setLoading(true)
