@@ -4,6 +4,7 @@
 
 ### UI:
 
+<img src="https://github.com/user-attachments/assets/6c4995b8-0f1e-4b37-8be6-89919bed09e3" width="150" alt="Hình ảnh ví dụ">
 ![Sign up](https://github.com/user-attachments/assets/6c4995b8-0f1e-4b37-8be6-89919bed09e3)
 ![Verify](https://github.com/user-attachments/assets/7aa817f5-c2fb-4258-8f51-6667d70f9fdd)
 
