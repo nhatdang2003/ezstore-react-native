@@ -5,8 +5,7 @@
 ### UI:
 
 <img src="https://github.com/user-attachments/assets/6c4995b8-0f1e-4b37-8be6-89919bed09e3" width="150" alt="Hình ảnh ví dụ">
-![Sign up](https://github.com/user-attachments/assets/6c4995b8-0f1e-4b37-8be6-89919bed09e3)
-![Verify](https://github.com/user-attachments/assets/7aa817f5-c2fb-4258-8f51-6667d70f9fdd)
+<img src="https://github.com/user-attachments/assets/7aa817f5-c2fb-4258-8f51-6667d70f9fdd" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** Guest  
 **Short Description:** Người dùng đăng ký tài khoản trên ứng dụng di động để bắt đầu sử dụng các tính năng của ứng dụng.  
@@ -41,7 +40,7 @@
 
 ### UI:
 
-![Sign in (1)](https://github.com/user-attachments/assets/840a0eba-c255-4e2b-8f41-39cafb557b0c)
+<img src="https://github.com/user-attachments/assets/840a0eba-c255-4e2b-8f41-39cafb557b0c" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** User  
 **Short Description:** Người dùng đăng nhập vào ứng dụng di động để truy cập các tính năng của ứng dụng.  
@@ -73,8 +72,8 @@
 
 ### UI:
 
-![Forgot Password](https://github.com/user-attachments/assets/078a3c20-733a-4754-9358-e6659b237dca)
-![Reset Password](https://github.com/user-attachments/assets/77338fe0-e42b-49dc-b49e-b5be94077b08)
+<img src="https://github.com/user-attachments/assets/078a3c20-733a-4754-9358-e6659b237dca" width="150" alt="Hình ảnh ví dụ">
+<img src="https://github.com/user-attachments/assets/77338fe0-e42b-49dc-b49e-b5be94077b08" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** User  
 **Short Description:** Người dùng đặt lại mật khẩu qua email để khôi phục quyền truy cập tài khoản.  
@@ -103,7 +102,7 @@
 
 ### UI:
 
-![Main](https://github.com/user-attachments/assets/05dcf695-7631-43ad-8ee7-8aad4aa2acec)
+<img src="https://github.com/user-attachments/assets/05dcf695-7631-43ad-8ee7-8aad4aa2acec" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** Guest, User  
 **Short Description:** Người dùng truy cập vào trang chủ để xem các sản phẩm nổi bật và thông tin liên quan.  
@@ -134,7 +133,7 @@
 
 ### UI:
 
-![Catalog](https://github.com/user-attachments/assets/1713b6da-ba73-45cb-88fa-4cca5e78ec9a)
+<img src="https://github.com/user-attachments/assets/1713b6da-ba73-45cb-88fa-4cca5e78ec9a" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** Guest, User  
 **Short Description:** Người dùng xem danh mục sản phẩm có trên ứng dụng để duyệt các sản phẩm theo nhóm.  
@@ -154,7 +153,7 @@
 
 ### UI:
 
-![Product](https://github.com/user-attachments/assets/e9ff1589-bb91-4f7d-ba3c-21d9ac69233e)
+<img src="https://github.com/user-attachments/assets/e9ff1589-bb91-4f7d-ba3c-21d9ac69233e" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** Guest, User  
 **Short Description:** Người dùng xem toàn bộ sản phẩm của cửa hàng.  
@@ -178,7 +177,7 @@
 
 ### UI:
 
-![Filters (1)](https://github.com/user-attachments/assets/bd1412cd-b04f-4a60-b5d3-c1b729fddaad)
+<img src="https://github.com/user-attachments/assets/bd1412cd-b04f-4a60-b5d3-c1b729fddaad" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** Guest, User  
 **Short Description:** Người dùng sử dụng bộ lọc để tìm ra các sản phẩm theo tiêu chí mong muốn.  
@@ -204,7 +203,7 @@
 
 ### UI:
 
-![Product Details](https://github.com/user-attachments/assets/7da73b1c-a5fa-459f-a766-73fbced2511e)
+<img src="https://github.com/user-attachments/assets/7da73b1c-a5fa-459f-a766-73fbced2511e" width="150" alt="Hình ảnh ví dụ">
 
 **Actor(s):** Guest, User  
 **Short Description:** Người dùng xem thông tin chi tiết của một sản phẩm.  
@@ -222,4 +221,83 @@
 ### Exception Flow:
 - **Trường hợp 1: Lỗi tải dữ liệu**  
   - Hệ thống hiển thị thông báo lỗi.  
+
+---
+
+## Use Case: Thêm sản phẩm vào giỏ hàng
+
+**Actor(s):** User  
+**Short Description:** Người dùng thêm sản phẩm vào giỏ hàng để chuẩn bị mua hàng.  
+**Pre-conditions:** Người dùng đã đăng nhập, sản phẩm có sẵn và chưa được thêm vào giỏ hàng.  
+**Post-conditions:** Sản phẩm được thêm vào giỏ hàng của người dùng.  
+
+### Main Flow:
+1. Người dùng nhấn nút **Thêm vào giỏ hàng**.  
+2. Hệ thống thêm sản phẩm vào giỏ hàng của người dùng.  
+
+### Alternative Flow:
+- Người dùng thoát ứng dụng trước khi thêm vào giỏ hàng.  
+
+### Exception Flow:
+- **Trường hợp 1: Lỗi không còn đủ sản phẩm**  
+  - Hệ thống hiển thị thông báo lỗi.  
+- **Trường hợp 2: Lỗi không cập nhật được dữ liệu**  
+  - Hệ thống hiển thị thông báo lỗi.  
+
+---
+
+## Use Case: Quản lý giỏ hàng
+
+### UI:
+
+<img src="https://github.com/user-attachments/assets/222c56c1-8ce6-4eef-af85-7fc5f9a6ce5e" width="150" alt="Hình ảnh ví dụ">
+
+**Actor(s):** User  
+**Short Description:** Người dùng quản lý giỏ hàng của mình bằng cách chỉnh sửa số lượng hoặc xóa sản phẩm.  
+**Pre-conditions:** Người dùng đã đăng nhập và đang ở tab **Giỏ hàng**.  
+**Post-conditions:** Cập nhật thành công các sản phẩm trong giỏ hàng.  
+
+### Main Flow:
+1. Người dùng nhấn dấu **+** hoặc dấu **-** để thay đổi số lượng sản phẩm.  
+2. Người dùng nhấn vào biểu tượng **thùng rác** để xóa sản phẩm khỏi giỏ hàng.  
+
+### Alternative Flow:
+- Người dùng chọn các sản phẩm muốn thanh toán và nhấn **Tiến hành thanh toán**.  
+
+### Exception Flow:
+- **Trường hợp 1: Lỗi không còn đủ sản phẩm khi chỉnh sửa số lượng**  
+  - Hệ thống hiển thị thông báo lỗi.  
+
+
+mạng, vui lòng kiểm tra lại."*  
+
+---
+
+## Use Case: Thanh toán đơn hàng
+
+### UI:
+
+<img src="https://github.com/user-attachments/assets/1e239206-1089-4d3a-ab44-0e2a9a7a5565" width="150" alt="Hình ảnh ví dụ">
+
+**Actor(s):** User  
+**Short Description:** Người dùng thanh toán cho các sản phẩm trong giỏ hàng để hoàn tất đơn hàng trên ứng dụng.  
+**Pre-conditions:** Người dùng đã đăng nhập, giỏ hàng của người dùng chứa ít nhất một sản phẩm.  
+**Post-conditions:** Đơn hàng được tạo thành công, giỏ hàng được làm trống, và người dùng nhận được thông tin xác nhận đơn hàng.  
+
+### Main Flow:
+1. Người dùng truy cập vào màn hình **Giỏ hàng**.  
+2. Người dùng kiểm tra danh sách sản phẩm và nhấn nút **Thanh toán**.  
+3. Hệ thống hiển thị màn hình thanh toán với thông tin sản phẩm, tổng tiền, và phương thức thanh toán.
+4. Người dùng chọn **Thanh toán khi nhận hàng** hoặc **VNPay**.
+5. Nếu chọn VNPay, hệ thống xử lý thanh toán với cổng VNPay.  
+6. Hệ thống tạo đơn hàng, làm trống giỏ hàng, và hiển thị thông báo xác nhận.  
+
+### Alternative Flow:
+- Người dùng chỉnh sửa thông tin giao hàng.  
+- Người dùng hủy thanh toán và quay lại màn hình trước.  
+
+### Exception Flow:
+- **Thanh toán VNPay thất bại**: Hiển thị thông báo lỗi.  
+- **Sản phẩm hết hàng**: Yêu cầu xóa khỏi giỏ hàng.  
+- **Lỗi kết nối mạng**: Hiển thị thông báo lỗi.  
 
