@@ -1,4 +1,4 @@
-# Phân tích và mô tả Use Case
+![Sign in (1)](https://github.com/user-attachments/assets/39c4b667-6bc1-4dc1-95c3-c89987a631de)# Phân tích và mô tả Use Case
 
 ## Use Case: Đăng ký tài khoản
 
@@ -40,7 +40,7 @@
 
 ### UI:
 
-![Sign in](https://github.com/user-attachments/assets/049f4dc6-e751-4794-9558-f9991bf10717)
+![Sign in (1)](https://github.com/user-attachments/assets/840a0eba-c255-4e2b-8f41-39cafb557b0c)
 
 **Actor(s):** User  
 **Short Description:** Người dùng đăng nhập vào ứng dụng di động để truy cập các tính năng của ứng dụng.  
@@ -148,4 +148,77 @@
 ### Exception Flow:
 - **Trường hợp 1: Lỗi kết nối**  
   - Hệ thống hiển thị thông báo lỗi: "Lỗi kết nối, vui lòng kiểm tra lại mạng."
+
+## Use Case: Xem sản phẩm
+
+### UI:
+
+![Product](https://github.com/user-attachments/assets/e9ff1589-bb91-4f7d-ba3c-21d9ac69233e)
+
+**Actor(s):** Guest, User  
+**Short Description:** Người dùng xem toàn bộ sản phẩm của cửa hàng.  
+**Pre-conditions:** Cửa hàng có sản phẩm.  
+**Post-conditions:** Người dùng có thể xem toàn bộ các sản phẩm mà cửa hàng có.  
+
+### Main Flow:
+1. Người dùng vào tab **Sản phẩm**.  
+2. Hệ thống hiển thị toàn bộ các sản phẩm.  
+
+### Alternative Flow:
+- Người dùng có thể sử dụng bộ lọc hoặc sắp xếp để tìm kiếm các sản phẩm theo nhu cầu.  
+
+### Exception Flow:
+- **Trường hợp 1: Lỗi tải dữ liệu**  
+  - Hệ thống hiển thị thông báo lỗi.  
+
+---
+
+## Use Case: Lọc sản phẩm
+
+### UI:
+
+![Filters (1)](https://github.com/user-attachments/assets/bd1412cd-b04f-4a60-b5d3-c1b729fddaad)
+
+**Actor(s):** Guest, User  
+**Short Description:** Người dùng sử dụng bộ lọc để tìm ra các sản phẩm theo tiêu chí mong muốn.  
+**Pre-conditions:** Cửa hàng có sản phẩm và người dùng ở tab **Sản phẩm**.  
+**Post-conditions:** Hệ thống hiển thị các sản phẩm theo tiêu chí của người dùng.  
+
+### Main Flow:
+1. Người dùng nhấn nút **Bộ lọc**.  
+2. Chọn các tiêu chí để lọc (danh mục, kích thước, màu sắc, giá tiền, đánh giá, …).  
+3. Hệ thống hiển thị danh sách các sản phẩm theo bộ lọc người dùng đã chọn.  
+
+### Alternative Flow:
+- Người dùng có thể nhấn nút **Đặt lại** để bỏ chọn toàn bộ các tiêu chí lọc.  
+- Người dùng có thể nhấn nút **Hủy** để xóa bộ lọc hiện tại.  
+
+### Exception Flow:
+- **Trường hợp 1: Lỗi tải dữ liệu**  
+  - Hệ thống hiển thị thông báo lỗi.  
+
+---
+
+## Use Case: Xem chi tiết sản phẩm
+
+### UI:
+
+![Product Details](https://github.com/user-attachments/assets/7da73b1c-a5fa-459f-a766-73fbced2511e)
+
+**Actor(s):** Guest, User  
+**Short Description:** Người dùng xem thông tin chi tiết của một sản phẩm.  
+**Pre-conditions:** Sản phẩm phải tồn tại trong hệ thống.  
+**Post-conditions:** Người dùng có thể xem hình ảnh, mô tả, kích thước, màu sắc, giá cả, đánh giá sản phẩm và thêm sản phẩm vào giỏ hàng.  
+
+### Main Flow:
+1. Người dùng chọn một sản phẩm từ danh sách.  
+2. Hệ thống hiển thị thông tin chi tiết sản phẩm.  
+
+### Alternative Flow:
+- Người dùng quay lại trang trước.
+- Người dùng chọn các sản phẩm có liên quan.
+
+### Exception Flow:
+- **Trường hợp 1: Lỗi tải dữ liệu**  
+  - Hệ thống hiển thị thông báo lỗi.  
 
