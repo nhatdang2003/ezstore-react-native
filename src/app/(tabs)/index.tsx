@@ -7,6 +7,7 @@ import SectionHeader from '@/src/components/SectionHeader'
 import { getFeaturedProducts, getNewProducts, getDiscountedProducts } from '@/src/services/product.service'
 import { Product } from '@/src/types/product.type'
 import { ProductCardProps } from '@/src/types/product.type'
+import { router } from 'expo-router'
 
 const HomeTab = () => {
     const [featuredProducts, setFeaturedProducts] = useState<ProductCardProps[]>([])
@@ -70,19 +71,25 @@ const HomeTab = () => {
                     <View style={styles.sectionsContainer}>
                         <SectionHeader
                             title='Nổi bật'
-                            onViewAll={() => { }}
+                            onViewAll={() => {
+                                router.navigate('/(tabs)/store')
+                            }}
                             data={featuredProducts}
                             loading={loading}
                         />
                         <SectionHeader
                             title='Mới nhất'
-                            onViewAll={() => { }}
+                            onViewAll={() => {
+                                router.navigate("/(tabs)/store");
+                            }}
                             data={newProducts}
                             loading={loading}
                         />
                         <SectionHeader
                             title='Khuyến mãi'
-                            onViewAll={() => { }}
+                            onViewAll={() => {
+                                router.navigate("/(tabs)/store");
+                            }}
                             data={discountedProducts}
                             loading={loading}
                         />
