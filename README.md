@@ -301,3 +301,32 @@ mạng, vui lòng kiểm tra lại."*
 - **Sản phẩm hết hàng**: Yêu cầu xóa khỏi giỏ hàng.  
 - **Lỗi kết nối mạng**: Hiển thị thông báo lỗi.  
 
+---
+
+## Use Case: Cập nhật thông tin tài khoản
+
+### UI:
+<img src="https://github.com/user-attachments/assets/32179b5c-7e3c-428e-955f-460ae3bcee1c" width="150" alt="Hình ảnh ví dụ">
+
+**Actor(s):** User  
+**Short Description:** Người dùng chỉnh sửa thông tin cá nhân trong tài khoản trên ứng dụng để cập nhật dữ liệu theo mong muốn.  
+**Pre-conditions:** Người dùng đã đăng nhập và đang ở màn hình xem chi tiết thông tin tài khoản.  
+**Post-conditions:** Thông tin cá nhân của người dùng được cập nhật thành công trong hệ thống.  
+
+### Main Flow:
+1. Người dùng bấm nút **Chỉnh sửa**. 
+2. Hệ thống hiển thị biểu mẫu chứa thông tin hiện tại của người dùng (họ tên, email, số điện thoại, địa chỉ).  
+3. Người dùng chỉnh sửa các trường thông tin cần thay đổi.  
+4. Người dùng nhấn **Lưu** để gửi yêu cầu cập nhật.  
+5. Hệ thống xác thực thông tin.  
+6. Hệ thống cập nhật thông tin vào cơ sở dữ liệu và hiển thị thông báo: *"Thông tin của bạn đã được cập nhật thành công."*  
+
+### Alternative Flow:
+- Người dùng hủy chỉnh sửa.  
+- Người dùng xác thực OTP khi thay đổi email và số điện thoại.  
+
+### Exception Flow:
+- **Thông tin không hợp lệ:** Hệ thống hiển thị thông báo lỗi.  
+- **Email đã tồn tại:** Hệ thống hiển thị thông báo lỗi.  
+- **Lỗi kết nối mạng:** Hệ thống hiển thị thông báo lỗi.  
+
