@@ -1,4 +1,4 @@
-![Sign in (1)](https://github.com/user-attachments/assets/39c4b667-6bc1-4dc1-95c3-c89987a631de)# Phân tích và mô tả Use Case
+# Phân tích và mô tả Use Case
 
 ## Use Case: Đăng ký tài khoản
 
