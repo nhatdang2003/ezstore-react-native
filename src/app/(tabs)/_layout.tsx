@@ -1,9 +1,11 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import { TouchableOpacity, TouchableOpacityProps } from 'react-native';
+import { TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLOR } from '@/src/constants/color';
+
 export default function TabLayout() {
+    const router = useRouter()
 
     return (
         <Tabs screenOptions={{
@@ -11,6 +13,13 @@ export default function TabLayout() {
             tabBarActiveTintColor: COLOR.PRIMARY,
             tabBarButton: (props) => (
                 <TouchableOpacity {...(props as TouchableOpacityProps)} activeOpacity={1} />
+            ),
+            headerRight: () => (
+                <View style={{ marginRight: 10 }}>
+                    <TouchableOpacity onPress={() => router.push('/(search)/search')}>
+                        <MaterialCommunityIcons name="magnify" size={24} color="black" />
+                    </TouchableOpacity>
+                </View>
             ),
         }}>
             <Tabs.Screen

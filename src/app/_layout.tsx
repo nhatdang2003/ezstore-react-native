@@ -59,6 +59,8 @@ export default function RootLayout() {
                 <Stack.Screen name="account/details" options={{ title: 'Thông tin chi tiết', headerTitleAlign: 'center' }} />
                 <Stack.Screen name="account/verify_update" options={{ headerShown: false }} />
                 <Stack.Screen name="+not-found" />
+                <Stack.Screen name="(search)/search" options={{ headerShown: false }} />
+                <Stack.Screen name="(search)/result" options={{ headerShown: false }} />
             </Stack>
         </View>
     );
