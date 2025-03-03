@@ -92,7 +92,7 @@ const RegisterScreen = () => {
                     password: input.password,
                     firstName: input.firstName,
                     lastName: input.lastName,
-                    dateOfBirth: input.birthDate,
+                    birthDate: input.birthDate,
                     gender: input.gender as Gender,
                 });
 

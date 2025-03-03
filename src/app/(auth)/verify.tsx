@@ -8,6 +8,7 @@ import ErrorMessageInput from '@/src/components/ErrorMessageInput'
 import { getActiveCode, postVerifyActivation, postVerifyRecoverPassword, postRecoverPassword } from '@/src/services/auth.service'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import LoadingOverlay from '@/src/components/LoadingOverlay'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const VerifyActivationScreen = () => {
     const { email } = useLocalSearchParams<{ email: string }>()
@@ -36,6 +37,8 @@ const VerifyActivationScreen = () => {
                         params: { email: email || '', code: code }
                     });
                 } else {
+                    const accessToken = verifyResponse.data.access_token;
+                    await AsyncStorage.setItem('access_token', accessToken);
                     router.replace('/(tabs)');
                 }
                 return;
