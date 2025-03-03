@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import HomeCarousel from '@/src/components/HomeCarousel'
 import CategoryCarousel from '@/src/components/CategoryCarousel'
 import SectionHeader from '@/src/components/SectionHeader'
-import { getFeaturedProducts, getNewProducts, getDiscountedProducts } from '@/src/services/product.service'
+import { getFeaturedProducts, getNewProducts, getDiscountedProducts, getBestSellerProducts } from '@/src/services/product.service'
 import { Product } from '@/src/types/product.type'
 import { ProductCardProps } from '@/src/types/product.type'
 import { router } from 'expo-router'
 
 const HomeTab = () => {
     const [featuredProducts, setFeaturedProducts] = useState<ProductCardProps[]>([])
+    const [bestSellerProducts, setBestSellerProducts] = useState<ProductCardProps[]>([])
     const [newProducts, setNewProducts] = useState<ProductCardProps[]>([])
     const [discountedProducts, setDiscountedProducts] = useState<ProductCardProps[]>([])
     const [loading, setLoading] = useState(true)
@@ -22,10 +23,11 @@ const HomeTab = () => {
     const fetchAllProducts = async () => {
         setLoading(true)
         try {
-            const [featured, newest, discounted] = await Promise.all([
+            const [featured, newest, discounted, bestSeller] = await Promise.all([
                 getFeaturedProducts(),
                 getNewProducts(),
-                getDiscountedProducts()
+                getDiscountedProducts(),
+                getBestSellerProducts()
             ])
 
             if (featured.statusCode === 200) {
@@ -36,6 +38,9 @@ const HomeTab = () => {
             }
             if (discounted.statusCode === 200) {
                 setDiscountedProducts(formatProducts(discounted.data.data))
+            }
+            if (bestSeller.statusCode === 200) {
+                setBestSellerProducts(formatProducts(bestSeller.data.data))
             }
         } catch (error) {
             console.error('Error fetching products:', error)
@@ -75,6 +80,14 @@ const HomeTab = () => {
                                 router.navigate('/(tabs)/store')
                             }}
                             data={featuredProducts}
+                            loading={loading}
+                        />
+                        <SectionHeader
+                            title='Bán chạy'
+                            onViewAll={() => {
+                                router.navigate('/(tabs)/store')
+                            }}
+                            data={bestSellerProducts}
                             loading={loading}
                         />
                         <SectionHeader
