@@ -91,3 +91,8 @@ export const getDiscountedProducts = (): Promise<PaginatedResponse<Product>> => 
     const url = `api/v1/products?isDiscounted=true&size=8`
     return axios.get(url);
 };
+
+export const getBestSellerProducts = (): Promise<PaginatedResponse<Product>> => {
+    const url = `api/v1/products?isBestSeller=true&size=8`
+    return axios.get(url);
+};

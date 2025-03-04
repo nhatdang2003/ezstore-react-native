@@ -5,9 +5,19 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { COLOR } from '@/src/constants/color'
 import { FONT } from '@/src/constants/font'
 import CustomButton from '@/src/components/CustomButton'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const AccountTab = () => {
     const router = useRouter()
+
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem('access_token')
+            router.push('/login')
+        } catch (error) {
+            console.error('Failed to log out:', error)
+        }
+    }
 
     const MenuButton = ({ icon, title, onPress }: { icon: string, title: string, onPress: () => void }) => (
         <CustomButton
@@ -60,7 +70,7 @@ const AccountTab = () => {
             </View>
 
             <CustomButton
-                onPress={() => { }}
+                onPress={handleLogout}
                 title="Log out"
                 variant="ghost"
                 style={styles.logoutButton}

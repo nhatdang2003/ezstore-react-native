@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import { FONT } from '@/src/constants/font';
 import { getCategoriesHomeTab } from '@/src/services/category.service';
+import { router } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFilterStore } from '../store/filterStore';
 
 interface Category {
     id: number;
@@ -26,10 +29,16 @@ const CategoryCarousel = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { categories: categoriesStore, setCategories: setCategoriesStore } = useFilterStore();
 
     useEffect(() => {
         fetchCategories();
     }, []);
+
+    const handleCategoryPress = (categoryId: string) => {
+        setCategoriesStore([...categoriesStore, parseInt(categoryId)]);
+        router.navigate("/(tabs)/store");
+    };
 
     const fetchCategories = async () => {
         try {
@@ -80,11 +89,12 @@ const CategoryCarousel = () => {
                 contentContainerStyle={styles.scrollContent}
                 snapToAlignment="center"
             >
-                {categories.map((category) => (
+                {categories.slice(0, 7).map((category) => (
                     <TouchableOpacity
                         key={category.id}
                         style={styles.card}
                         activeOpacity={0.8}
+                        onPress={() => handleCategoryPress(category.id.toString())}
                     >
                         <View style={styles.imageContainer}>
                             <Image
@@ -93,12 +103,36 @@ const CategoryCarousel = () => {
                                 resizeMode="cover"
                             />
                             <View style={styles.overlay} />
-                            <Text style={styles.categoryTitle}>
-                                {category.name}
-                            </Text>
+                            <Text style={styles.categoryTitle}>{category.name}</Text>
                         </View>
                     </TouchableOpacity>
                 ))}
+                {categories.length > 7 && (
+                    <TouchableOpacity
+                        style={styles.card}
+                        activeOpacity={0.8}
+                        onPress={() => router.navigate("/(tabs)/category")}
+                    >
+                        <View style={styles.imageContainer}>
+                            <Image
+                                source={{ uri: categories[7].imageUrl }}
+                                style={styles.image}
+                                resizeMode="cover"
+                            />
+                            <View style={[styles.overlay, styles.viewMoreOverlay]} />
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                <Text style={styles.categoryTitle}>
+                                    Xem thêm{" "}
+                                    <MaterialCommunityIcons
+                                        name="arrow-right"
+                                        size={13}
+                                        color="white"
+                                    />
+                                </Text>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                )}
             </ScrollView>
         </View>
     );
@@ -175,6 +209,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#8E8E93',
         fontFamily: FONT.LORA,
+    },
+    viewMoreOverlay: {
+        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Overlay tối hơn cho item "Xem thêm"
     },
 });
 
