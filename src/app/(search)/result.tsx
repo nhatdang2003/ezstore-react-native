@@ -30,14 +30,13 @@ const ProductItem = memo(({
 
 const ResultScreen = () => {
     const { keyword } = useLocalSearchParams()
+    const { categories, priceRange, rating, colors, sizes, isFilterChanged, isFilterReset, setIsFilterChanged, setIsFilterReset } = useFilterStore();
     const segments = useSegments();
     const router = useRouter();
-    const isStoreScreen = segments[1] === 'store';
+    const isResultScreen = segments[1] === 'result';
 
     const [open, setOpen] = useState(false)
     const [sort, setSort] = useState('price-asc')
-    const filterStore = useFilterStore()
-    const { isFilterChanged, isFilterReset } = filterStore
     const flatListRef = useRef<FlatList>(null);
 
     const [products, setProducts] = useState<Product[]>([])
@@ -77,14 +76,15 @@ const ResultScreen = () => {
         setLoading(true)
         try {
             const response = await getProducts({
+                search: keyword as string,
                 page: pageNumber,
                 size: 10,
-                categories: filterStore.categories,
-                minPrice: filterStore.priceRange.min,
-                maxPrice: filterStore.priceRange.max,
-                rating: filterStore.rating,
-                colors: filterStore.colors,
-                sizes: filterStore.sizes,
+                categories: categories,
+                minPrice: priceRange.min,
+                maxPrice: priceRange.max,
+                rating: rating,
+                colors: colors,
+                sizes: sizes,
                 sort: sort
             })
 
@@ -122,33 +122,39 @@ const ResultScreen = () => {
 
     // Handle when filter changes
     useEffect(() => {
-        if (isFilterChanged && isStoreScreen) {
+        if (isFilterChanged && isResultScreen) {
             resetAndLoadProducts()
-            filterStore.setIsFilterChanged(false)
+            setIsFilterChanged(false)
         }
-    }, [isFilterChanged, isStoreScreen])
+    }, [isFilterChanged, isResultScreen])
 
     // Handle when filter is reset
     useEffect(() => {
-        if (isFilterReset && isStoreScreen && !isFilterChanged) {
+        if (isFilterReset && isResultScreen && !isFilterChanged) {
             resetAndLoadProducts()
-            filterStore.setIsFilterReset(false)
+            setIsFilterReset(false)
         }
-    }, [isFilterReset, isStoreScreen])
+    }, [isFilterReset, isResultScreen])
 
     // Handler when sort changes
     useEffect(() => {
-        if (isStoreScreen) {
+        if (isResultScreen) {
             resetAndLoadProducts()
         }
     }, [sort])
 
     // Reset dropdown when entering the store page
     useEffect(() => {
-        if (isStoreScreen) {
+        if (isResultScreen) {
             setOpen(false)
         }
-    }, [isStoreScreen])
+    }, [isResultScreen])
+
+    useEffect(() => {
+        if (keyword) {
+            resetAndLoadProducts()
+        }
+    }, [keyword])
 
     const handleLoadMore = useCallback(() => {
         if (!loading && hasMore) {
@@ -168,7 +174,7 @@ const ResultScreen = () => {
                             placeholder="Tìm kiếm"
                             style={styles.input}
                             value={Array.isArray(keyword) ? keyword[0] : keyword}
-                            onPress={() => router.push(`/search?keyword=${encodeURIComponent(Array.isArray(keyword) ? keyword[0] : keyword)}`)}
+                            onPress={() => router.replace(`/search?keyword=${encodeURIComponent(Array.isArray(keyword) ? keyword[0] : keyword)}`)}
                         />
                     </View>
                 </View>

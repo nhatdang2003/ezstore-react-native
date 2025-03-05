@@ -38,7 +38,7 @@ export default function RootLayout() {
 
     useEffect(() => {
         console.log(segments)
-        if (segments[segments.length - 1] !== 'filter' && segments[segments.length - 1] !== 'store') {
+        if (segments[segments.length - 1] !== 'filter' && segments[segments.length - 1] !== 'store' && segments[segments.length - 1] !== 'result') {
             resetFilters()
         }
     }, [segments, resetFilters])
