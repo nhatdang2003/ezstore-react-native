@@ -5,6 +5,7 @@ import RatingStars from '@/src/components/RatingStars';
 import Price from '@/src/components/Price';
 import { FONT } from '@/src/constants/font';
 import { COLOR } from '@/src/constants/color';
+import { useRouter } from 'expo-router';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 24;
 
@@ -16,10 +17,12 @@ const ProductCard = ({
     priceDiscount,
     rating,
 }: ProductCardProps) => {
+    const router = useRouter()
+
     return (
         <TouchableOpacity
             style={styles.container}
-            onPress={() => { }}
+            onPress={() => { router.push('/(product)/detail') }}
             activeOpacity={0.8}
         >
             <Image
@@ -60,9 +63,5 @@ const styles = StyleSheet.create({
         gap: 2,
     },
 });
-
-
-
-
 
 export default ProductCard

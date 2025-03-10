@@ -61,6 +61,7 @@ export default function RootLayout() {
                 <Stack.Screen name="+not-found" />
                 <Stack.Screen name="(search)/search" options={{ headerShown: false }} />
                 <Stack.Screen name="(search)/result" options={{ headerShown: false }} />
+                <Stack.Screen name='(product)/detail' options={{ headerShown: false }} />
             </Stack>
         </View>
     );
