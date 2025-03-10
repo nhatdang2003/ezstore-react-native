@@ -18,7 +18,7 @@ export const getProducts = async ({
 
     // Add search filter
     if (search) {
-        url += `&filter=name~'${search}'`;
+        url += `&filter=name~~'*${search}*'`;
     }
 
     // Add categories filter

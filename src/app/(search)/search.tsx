@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react'
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBestSellerProducts, getProducts } from '@/src/services/product.service';
+import { Product } from '@/src/types/product.type';
+import { useFilterStore } from '@/src/store/filterStore';
 
 const suggestedProducts = [
     {
@@ -111,11 +114,14 @@ const SearchScreen = () => {
     const { keyword } = useLocalSearchParams()
     const router = useRouter()
     const [searchText, setSearchText] = useState('')
-    const [searchResults, setSearchResults] = useState([])
+    const [searchResults, setSearchResults] = useState<Product[]>([])
     const [recentSearches, setRecentSearches] = useState([])
+    const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
+    const filterSearch = useFilterStore();
 
     useEffect(() => {
         loadRecentSearches()
+        loadSuggestedProducts()
     }, [])
 
     useEffect(() => {
@@ -123,6 +129,14 @@ const SearchScreen = () => {
             handleSearch(Array.isArray(keyword) ? keyword[0] : keyword)
         }
     }, [keyword])
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            handleSearch(searchText);
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchText]);
 
     const loadRecentSearches = async () => {
         try {
@@ -135,16 +149,22 @@ const SearchScreen = () => {
         }
     }
 
+    const loadSuggestedProducts = async () => {
+        try {
+            const results = await getBestSellerProducts();
+            setSuggestedProducts(results.data.data);
+        } catch (error) {
+            console.error('Error loading suggested products:', error)
+        }
+    }
+
     const handleSearch = async (text: string) => {
         setSearchText(text)
         if (text.trim()) {
-            // Giả lập API call - thay thế bằng API thật
-            const results = suggestedProducts.filter(item =>
-                item.name.toLowerCase().includes(text.toLowerCase())
-            )
-            setSearchResults(results)
+            const results = await getProducts({ search: text, page: 0 });
+            setSearchResults(results.data.data);
         } else {
-            setSearchResults([])
+            setSearchResults([]);
         }
     }
 
@@ -165,13 +185,13 @@ const SearchScreen = () => {
 
     const handleSelectItem = async (item: string) => {
         await saveSearch(item)
-        router.push(`/result?keyword=${encodeURIComponent(item)}`)
+        router.replace(`/result?keyword=${encodeURIComponent(item)}`)
     }
 
     const handleSubmit = async () => {
         if (searchText.trim()) {
             await saveSearch(searchText.trim())
-            router.push(`/result?keyword=${encodeURIComponent(searchText.trim())}`)
+            router.replace(`/result?keyword=${encodeURIComponent(searchText.trim())}`)
         }
     }
 
@@ -203,7 +223,7 @@ const SearchScreen = () => {
                         placeholder="Tìm kiếm"
                         style={styles.input}
                         value={searchText}
-                        onChangeText={handleSearch}
+                        onChangeText={setSearchText}
                         onSubmitEditing={handleSubmit}
                     />
                     {searchText.length > 0 && (
@@ -272,7 +292,7 @@ const SearchScreen = () => {
                                     onPress={() => handleSelectItem(product.name)}
                                 >
                                     <Image
-                                        source={{ uri: product.image }}
+                                        source={{ uri: product.images[0] }}
                                         style={styles.productImage}
                                     />
                                     <Text style={styles.productName} numberOfLines={2}>
