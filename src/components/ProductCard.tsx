@@ -22,7 +22,14 @@ const ProductCard = ({
     return (
         <TouchableOpacity
             style={styles.container}
-            onPress={() => { router.push('/(product)/detail') }}
+            onPress={() => {
+                router.push({
+                    pathname: "/(product)/detail",
+                    params: {
+                        id: id
+                    }
+                })
+            }}
             activeOpacity={0.8}
         >
             <Image

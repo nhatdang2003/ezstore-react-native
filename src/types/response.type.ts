@@ -14,3 +14,10 @@ export interface PaginatedResponse<T> {
         data: T[];
     };
 }
+
+export interface Response<T> {
+    statusCode: number;
+    error: null | string;
+    message: string;
+    data: T;
+}

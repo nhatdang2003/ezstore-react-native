@@ -1,6 +1,6 @@
 import axios from '@/src/services/instance_axios';
-import { PaginatedResponse } from '@/src/types/response.type';
-import { Product, ProductQueryParams } from '@/src/types/product.type';
+import { PaginatedResponse, Response } from '@/src/types/response.type';
+import { Product, ProductQueryParams, ProductDetail } from '@/src/types/product.type';
 
 export const getProducts = async ({
     search,
@@ -93,6 +93,21 @@ export const getDiscountedProducts = (): Promise<PaginatedResponse<Product>> => 
 };
 
 export const getBestSellerProducts = (): Promise<PaginatedResponse<Product>> => {
+    const url = `api/v1/products?isBestSeller=true&size=8`
+    return axios.get(url);
+};
+
+export const getProductDetail = (id: number): Promise<Response<ProductDetail>> => {
+    const url = `api/v1/products/ids/${id}`;
+    return axios.get(url);
+};
+
+export const getSimilarProducts = (categoryId: number): Promise<PaginatedResponse<Product>> => {
+    const url = `api/v1/products?filter=category.id~'${categoryId}'&size=8`
+    return axios.get(url);
+};
+
+export const getRecommendedProducts = (): Promise<PaginatedResponse<Product>> => {
     const url = `api/v1/products?isBestSeller=true&size=8`
     return axios.get(url);
 };

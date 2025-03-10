@@ -38,7 +38,10 @@ export default function RootLayout() {
 
     useEffect(() => {
         console.log(segments)
-        if (segments[segments.length - 1] !== 'filter' && segments[segments.length - 1] !== 'store') {
+        if (segments[segments.length - 1] !== 'filter'
+            && segments[segments.length - 1] !== 'store'
+            && segments[segments.length - 1] !== 'detail'
+        ) {
             resetFilters()
         }
     }, [segments, resetFilters])
@@ -49,7 +52,7 @@ export default function RootLayout() {
 
     return (
         <View style={{ flex: 1 }}>
-            <Stack>
+            <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
@@ -61,7 +64,7 @@ export default function RootLayout() {
                 <Stack.Screen name="+not-found" />
                 <Stack.Screen name="(search)/search" options={{ headerShown: false }} />
                 <Stack.Screen name="(search)/result" options={{ headerShown: false }} />
-                <Stack.Screen name='(product)/detail' options={{ headerShown: false }} />
+                <Stack.Screen name="(product)" options={{ headerShown: false }} />
             </Stack>
         </View>
     );
