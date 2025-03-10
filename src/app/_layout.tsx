@@ -58,13 +58,12 @@ export default function RootLayout() {
                 <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
                 <Stack.Screen name="(auth)/forget_password" options={{ headerShown: false }} />
-                <Stack.Screen name="store/filter" options={{ title: 'Bộ lọc', headerTitleAlign: 'center' }} />
-                <Stack.Screen name="account/details" options={{ title: 'Thông tin chi tiết', headerTitleAlign: 'center' }} />
+                <Stack.Screen name="store/filter" options={{ title: 'Bộ lọc', headerTitleAlign: 'center', headerShown: true }} />
+                <Stack.Screen name="account/details" options={{ title: 'Thông tin chi tiết', headerTitleAlign: 'center', headerShown: true }} />
                 <Stack.Screen name="account/verify_update" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
+                <Stack.Screen name="+not-found" options={{ headerShown: true }} />
                 <Stack.Screen name="(search)/search" options={{ headerShown: false }} />
                 <Stack.Screen name="(search)/result" options={{ headerShown: false }} />
-                <Stack.Screen name="(product)" options={{ headerShown: false }} />
             </Stack>
         </View>
     );
