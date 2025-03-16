@@ -3,6 +3,7 @@ import React from 'react';
 import { TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLOR } from '@/src/constants/color';
+import { FONT } from '@/src/constants/font';
 
 export default function TabLayout() {
     const router = useRouter()
@@ -14,6 +15,9 @@ export default function TabLayout() {
             tabBarButton: (props) => (
                 <TouchableOpacity {...(props as TouchableOpacityProps)} activeOpacity={1} />
             ),
+            headerTitleStyle: {
+                fontFamily: FONT.LORA_MEDIUM
+            },
             headerRight: () => (
                 <View style={{ marginRight: 10 }}>
                     <TouchableOpacity onPress={() => router.push('/(search)/search')}>
