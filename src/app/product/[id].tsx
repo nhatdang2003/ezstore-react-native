@@ -321,13 +321,7 @@ const ProductDetailScreen = () => {
             style={styles.productItem}
             onPress={() => {
                 // Sử dụng push để stack màn hình mới
-                router.push({
-                    pathname: `/(product)/detail`,
-                    params: { 
-                        id: item.id,
-                        timestamp: Date.now() // Thêm timestamp để tạo unique route
-                    }
-                });
+                router.push(`/product/${item.id}`);
             }}
         >
             <Image source={{ uri: item.images[0] }} style={styles.productItemImage} />
@@ -600,18 +594,18 @@ const ProductDetailScreen = () => {
 
             {/* Header - cập nhật lại vị trí các icon */}
             <View style={styles.header}>
-                <TouchableOpacity 
-                    style={styles.headerButton} 
+                <TouchableOpacity
+                    style={styles.headerButton}
                     onPress={() => router.back()}
                 >
                     <Ionicons name="chevron-back" size={24} color="black" />
                 </TouchableOpacity>
-                
+
                 <View style={styles.headerRight}>
                     <TouchableOpacity style={styles.headerButton}>
                         <Feather name="share-2" size={20} color="black" />
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.headerButton}
                         onPress={handleGoHome}
                     >

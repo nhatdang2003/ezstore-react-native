@@ -1,5 +1,5 @@
 import type React from "react"
-import { View, StyleSheet } from "react-native"
+import { View, StyleSheet, Text } from "react-native"
 import { FontAwesome } from "@expo/vector-icons"
 
 interface RatingStarsProps {
@@ -23,7 +23,6 @@ const RatingStars: React.FC<RatingStarsProps> = ({ rating }) => {
             {/* Ngôi sao đầy */}
             <View style={[styles.filledStarContainer, { width: `${filled * 100}%` }]}>
                 <FontAwesome name="star" size={12} color="#FFD700" />
-
             </View>
         </View>
     )
@@ -43,7 +42,14 @@ const RatingStars: React.FC<RatingStarsProps> = ({ rating }) => {
         }
     }
 
-    return <View style={styles.container}>{stars}</View>
+    return <View style={styles.container}>
+        {fullStars > 0 ? stars
+            : <View style={styles.emptyStarContainer}>
+                <FontAwesome name="star" size={12} color="#FFD700" />
+                <Text>Chưa có đánh giá</Text>
+            </View>
+        }
+    </View>
 }
 
 const styles = StyleSheet.create({
@@ -64,6 +70,12 @@ const styles = StyleSheet.create({
         position: "absolute",
         overflow: "hidden",
     },
+    emptyStarContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 4,
+    }
 })
 
 export default RatingStars;

@@ -40,7 +40,7 @@ export default function RootLayout() {
         console.log(segments)
         if (segments[segments.length - 1] !== 'filter'
             && segments[segments.length - 1] !== 'store'
-            && segments[segments.length - 1] !== 'detail'
+            && segments[segments.length - 1] !== '[id]'
         ) {
             resetFilters()
         }
