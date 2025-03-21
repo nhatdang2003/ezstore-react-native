@@ -103,7 +103,7 @@ export const getProductDetail = (id: number): Promise<Response<ProductDetail>> =
 };
 
 export const getSimilarProducts = (categoryId: number): Promise<PaginatedResponse<Product>> => {
-    const url = `api/v1/products?filter=category.id~'${categoryId}'&size=8`
+    const url = `api/v1/products?filter=category.id:'${categoryId}'&size=8`
     return axios.get(url);
 };
 

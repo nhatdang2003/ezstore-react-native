@@ -1,4 +1,7 @@
 import axios from '@/src/services/instance_axios'
+import { Response } from '@/src/types/response.type';
+import { UserInfo } from '@/src/types/user.type'
+
 
 export const getUserInfo = () => {
     const url = `api/v1/mobile/users/profiles`
@@ -20,9 +23,9 @@ export const updateAvatar = (data: any) => {
     return axios.put(url, data)
 }
 
-
-
-
-
+export const getUserCartInfo = (): Promise<Response<UserInfo>> => {
+    const url = `api/v1/users/info`
+    return axios.get(url)
+}
 
 
