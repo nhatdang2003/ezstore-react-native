@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -7,21 +7,20 @@ import {
     SafeAreaView,
     TouchableOpacity,
     ScrollView,
-    StatusBar,
     ActivityIndicator,
     Alert
 } from 'react-native';
 import {
     Ionicons,
     Feather,
-    AntDesign,
-    FontAwesome,
-    MaterialCommunityIcons
 } from '@expo/vector-icons';
 import { FONT } from '@/src/constants/font';
-import { getUserCart } from '@/src/services/cart.service';
+import { getUserCart, updateItemCart, deleteItemCart } from '@/src/services/cart.service';
 import { CartItem } from '@/src/types/cart.type';
 import { useFocusEffect, useRouter } from 'expo-router';
+import ConfirmModal from '@/src/components/ConfirmModal';
+import { getUserCartInfo } from '@/src/services/user.service';
+import { useCartStore } from '@/src/store/cartStore';
 
 // Hàm chuyển đổi mã màu từ tên màu
 const getColorCode = (colorName: string): string => {
@@ -54,6 +53,10 @@ const CartTab = () => {
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [dialogVisible, setDialogVisible] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+
+    const setCartCount = useCartStore(state => state.setCartCount);
 
     useFocusEffect(
         useCallback(() => {
@@ -66,7 +69,6 @@ const CartTab = () => {
             setLoading(true);
             const response = await getUserCart();
             setCartItems(response.data);
-            console.log(response.data)
             setError(null);
         } catch (err) {
             console.error('Lỗi khi lấy dữ liệu giỏ hàng:', err);
@@ -94,38 +96,78 @@ const CartTab = () => {
         }
     };
 
-    const updateQuantity = (cartItemId: number, delta: number) => {
-        setCartItems(prevItems =>
-            prevItems.map(item => {
+    const updateQuantity = async (cartItemId: number, delta: number) => {
+        try {
+            // Cập nhật UI trước
+            const updatedItems = cartItems.map(item => {
                 if (item.cartItemId === cartItemId) {
                     const newQuantity = Math.max(1, Math.min(item.inStock, item.quantity + delta));
                     return { ...item, quantity: newQuantity };
                 }
                 return item;
-            })
-        );
-        // Ở đây bạn có thể thêm API call để cập nhật số lượng trên server
+            });
+
+            // Tìm item được cập nhật để gửi lên server
+            const updatedItem = updatedItems.find(item => item.cartItemId === cartItemId);
+            if (!updatedItem) return;
+
+            setCartItems(updatedItems);
+
+            // Gọi API để cập nhật
+            await updateItemCart(updatedItem);
+        } catch (error) {
+            console.error('Lỗi khi cập nhật số lượng:', error);
+            // Rollback UI nếu có lỗi
+            fetchCartItems();
+            Alert.alert(
+                "Lỗi",
+                "Không thể cập nhật số lượng sản phẩm. Vui lòng thử lại sau."
+            );
+        }
     };
 
     const removeItem = (cartItemId: number) => {
-        Alert.alert(
-            "Xác nhận xóa",
-            "Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?",
-            [
-                {
-                    text: "Hủy",
-                    style: "cancel"
-                },
-                {
-                    text: "Xóa",
-                    onPress: () => {
-                        setCartItems(prevItems => prevItems.filter(item => item.cartItemId !== cartItemId));
-                        setSelectedItems(prevSelected => prevSelected.filter(id => id !== cartItemId));
-                        // Ở đây bạn có thể thêm API call để xóa sản phẩm trên server
-                    }
+        setItemToDelete(cartItemId);
+        setDialogVisible(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (itemToDelete === null) return;
+
+        try {
+            // Cập nhật UI trước
+            setCartItems(prevItems =>
+                prevItems.filter(item => item.cartItemId !== itemToDelete)
+            );
+            setSelectedItems(prevSelected =>
+                prevSelected.filter(id => id !== itemToDelete)
+            );
+
+            // Gọi API để xóa
+            await deleteItemCart(itemToDelete);
+
+            // Sau khi xóa thành công, cập nhật số lượng trong giỏ hàng
+            try {
+                const cartInfoResponse = await getUserCartInfo();
+                if (cartInfoResponse.data) {
+                    // Cập nhật số lượng trong cartStore
+                    setCartCount(cartInfoResponse.data.cartItemsCount);
                 }
-            ]
-        );
+            } catch (cartError) {
+                console.error('Lỗi khi cập nhật số lượng giỏ hàng:', cartError);
+            }
+        } catch (error) {
+            console.error('Lỗi khi xóa sản phẩm:', error);
+            // Rollback UI nếu có lỗi
+            fetchCartItems();
+            Alert.alert(
+                "Lỗi",
+                "Không thể xóa sản phẩm. Vui lòng thử lại sau."
+            );
+        } finally {
+            setDialogVisible(false);
+            setItemToDelete(null);
+        }
     };
 
     const calculateSubtotal = () => {
@@ -198,7 +240,7 @@ const CartTab = () => {
                 <Text style={styles.emptyText}>Giỏ hàng của bạn đang trống</Text>
                 <TouchableOpacity
                     style={styles.continueShoppingButton}
-                    onPress={() => router.push('/(tabs)')}
+                    onPress={() => router.navigate('/(tabs)')}
                 >
                     <Text style={styles.continueShoppingText}>Tiếp tục mua sắm</Text>
                 </TouchableOpacity>
@@ -235,7 +277,7 @@ const CartTab = () => {
                             </View>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={() => router.push(`/(product)/${item.productId}`)}>
+                        <TouchableOpacity onPress={() => router.push(`/product/${item.productId}`)}>
                             <Image
                                 source={{ uri: item.productVariant.image || item.image }}
                                 style={styles.productImage}
@@ -279,8 +321,12 @@ const CartTab = () => {
                             <View style={styles.quantityAndTrashContainer}>
                                 <View style={styles.quantityContainer}>
                                     <TouchableOpacity
-                                        style={styles.quantityButton}
+                                        style={[
+                                            styles.quantityButton,
+                                            item.quantity <= 1 && styles.disabledButton
+                                        ]}
                                         onPress={() => updateQuantity(item.cartItemId, -1)}
+                                        disabled={item.quantity <= 1}
                                     >
                                         <Text style={styles.quantityButtonText}>−</Text>
                                     </TouchableOpacity>
@@ -333,6 +379,16 @@ const CartTab = () => {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            <ConfirmModal
+                visible={dialogVisible}
+                message="Bạn có chắc chắn muốn bỏ sản phẩm này?"
+                onCancel={() => {
+                    setDialogVisible(false);
+                    setItemToDelete(null);
+                }}
+                onConfirm={handleConfirmDelete}
+            />
         </SafeAreaView>
     );
 };
@@ -413,7 +469,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         backgroundColor: 'white',
-        marginBottom: 8
+        marginVertical: 8,
+        marginHorizontal: 8,
+        borderRadius: 16,
     },
     checkboxContainer: {
         flexDirection: 'row',

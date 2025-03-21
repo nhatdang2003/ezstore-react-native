@@ -324,16 +324,16 @@ const ProductDetailScreen = () => {
         const hasHalfStar = rating % 1 !== 0;
 
         for (let i = 0; i < fullStars; i++) {
-            stars.push(<AntDesign key={`star-${i}`} name="star" size={14} color="#000" />);
+            stars.push(<AntDesign key={`star-${i}`} name="star" size={14} color="#FFD700" />);
         }
 
         if (hasHalfStar) {
-            stars.push(<AntDesign key="half-star" name="staro" size={14} color="#000" />);
+            stars.push(<AntDesign key="half-star" name="staro" size={14} color="#FFD700" />);
         }
 
         const remainingStars = 5 - stars.length;
         for (let i = 0; i < remainingStars; i++) {
-            stars.push(<AntDesign key={`empty-star-${i}`} name="staro" size={14} color="#000" />);
+            stars.push(<AntDesign key={`empty-star-${i}`} name="staro" size={14} color="#FFD700" />);
         }
 
         return stars;
