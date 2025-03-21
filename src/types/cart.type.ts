@@ -1,3 +1,8 @@
+export interface VariantCart {
+    productVariantId: number,
+    quantity: number
+}
+
 export interface CartItem {
     cartItemId: number;
     productId: number;

@@ -1,12 +1,14 @@
 import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import { TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
+import { TouchableOpacity, TouchableOpacityProps, View, Text, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLOR } from '@/src/constants/color';
+import { useCartStore } from '@/src/store/cartStore';
 import { FONT } from '@/src/constants/font';
 
 export default function TabLayout() {
     const router = useRouter()
+    const cartCount = useCartStore(state => state.cartCount);
 
     return (
         <Tabs screenOptions={{
@@ -62,7 +64,20 @@ export default function TabLayout() {
                     title: 'Giỏ hàng',
                     headerTitleAlign: 'center',
                     tabBarIcon: ({ color, size, focused }) => (
-                        <MaterialCommunityIcons name={focused ? "cart" : "cart-outline"} color={color} size={size} />
+                        <View>
+                            <MaterialCommunityIcons
+                                name={focused ? "cart" : "cart-outline"}
+                                color={color}
+                                size={size}
+                            />
+                            {cartCount > 0 && (
+                                <View style={styles.cartBadge}>
+                                    <Text style={styles.cartBadgeText}>
+                                        {cartCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     ),
                 }}
             />
@@ -79,3 +94,23 @@ export default function TabLayout() {
         </Tabs>
     );
 }
+
+const styles = StyleSheet.create({
+    cartBadge: {
+        position: 'absolute',
+        right: -6,
+        top: -6,
+        backgroundColor: '#FF424E',
+        borderRadius: 10,
+        minWidth: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 2,
+    },
+    cartBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+});
