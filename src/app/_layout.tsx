@@ -10,6 +10,9 @@ import {
 } from '@expo-google-fonts/lora';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFilterStore } from '@/src/store/filterStore';
+import { useCartStore } from '@/src/store/cartStore';
+import { getUserCartInfo } from '@/src/services/user.service';
+
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
@@ -20,6 +23,7 @@ export default function RootLayout() {
         [FONT.LORA]: Lora_400Regular,
         [FONT.LORA_MEDIUM]: Lora_500Medium,
     });
+    const setCartCount = useCartStore(state => state.setCartCount);
 
     useEffect(() => {
         if (loaded || error) {
@@ -45,6 +49,19 @@ export default function RootLayout() {
             resetFilters()
         }
     }, [segments, resetFilters])
+
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            try {
+                const userInfo = await getUserCartInfo();
+                setCartCount(userInfo.data.cartItemsCount);
+            } catch (error) {
+                console.error('Error fetching cart count:', error);
+            }
+        };
+
+        fetchUserInfo();
+    }, []);
 
     if (!loaded && !error) {
         return null;

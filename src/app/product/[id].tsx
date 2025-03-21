@@ -11,7 +11,7 @@ import {
     Dimensions,
     FlatList,
 } from 'react-native';
-import { Ionicons, AntDesign, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, AntDesign } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
     getProductDetail,
@@ -19,6 +19,10 @@ import {
     getRecommendedProducts
 } from '@/src/services/product.service';
 import { Product, ProductDetail, ProductVariant } from '@/src/types/product.type';
+import { useCartStore } from '@/src/store/cartStore';
+import { getUserCartInfo } from '@/src/services/user.service';
+import { addToCart } from '@/src/services/cart.service';
+import Toast from '@/src/components/Toast';
 
 const { width } = Dimensions.get('window');
 
@@ -38,9 +42,14 @@ const ProductDetailScreen = () => {
     const [displayImages, setDisplayImages] = useState<string[]>([]);
     const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
     const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
     const mainImageRef = useRef<FlatList>(null);
     const thumbnailRef = useRef<ScrollView>(null);
+    const setCartCount = useCartStore(state => state.setCartCount);
+    const cartCount = useCartStore(state => state.cartCount);
 
     useEffect(() => {
         const fetchProductData = async () => {
@@ -181,8 +190,13 @@ const ProductDetailScreen = () => {
         }
     };
 
-    // Xử lý thêm vào giỏ hàng
-    const handleAddToCart = () => {
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToastMessage(message);
+        setToastType(type);
+        setToastVisible(true);
+    };
+
+    const handleAddToCart = async () => {
         if (!selectedColor) {
             setValidationError('Vui lòng chọn màu sắc');
             return;
@@ -203,19 +217,29 @@ const ProductDetailScreen = () => {
             return;
         }
 
-        // Nếu mọi thứ hợp lệ, thêm vào giỏ hàng
-        // TODO: Thêm logic thêm vào giỏ hàng ở đây
-        console.log('Thêm vào giỏ hàng:', {
-            productId: product?.id,
-            variantId: selectedVariant.id,
-            color: selectedColor,
-            size: selectedSize,
-            quantity: quantity
-        });
+        try {
+            const cartData = {
+                productVariantId: selectedVariant.id,
+                quantity: quantity
+            };
 
-        setValidationError(null);
-        // Hiển thị thông báo thành công
-        alert('Đã thêm sản phẩm vào giỏ hàng');
+            const response = await addToCart(cartData);
+
+            if (response.statusCode === 200) {
+                const userInfo = await getUserCartInfo();
+                if (userInfo.data) {
+                    setCartCount(userInfo.data.cartItemsCount);
+                }
+
+                setValidationError(null);
+                showToast('Đã thêm vào giỏ');
+            } else {
+                showToast('Có lỗi xảy ra khi thêm vào giỏ hàng', 'error');
+            }
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            showToast('Có lỗi xảy ra khi thêm vào giỏ hàng', 'error');
+        }
     };
 
     const handleImageChange = (index: number) => {
@@ -336,7 +360,7 @@ const ProductDetailScreen = () => {
     );
 
     const handleGoHome = () => {
-        router.replace('/(tabs)');
+        router.navigate('/(tabs)');
     };
 
     if (loading) {
@@ -465,7 +489,16 @@ const ProductDetailScreen = () => {
                                     onPress={() => handleColorSelect(color.id)}
                                 >
                                     {selectedColor === color.id && (
-                                        <AntDesign name="check" size={16} color="white" />
+                                        <AntDesign
+                                            name="check"
+                                            size={16}
+                                            color={color.color === '#FFFFFF' ? '#000' : '#fff'}
+                                            style={{
+                                                textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                                                textShadowOffset: { width: 1, height: 1 },
+                                                textShadowRadius: 1,
+                                            }}
+                                        />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -592,7 +625,7 @@ const ProductDetailScreen = () => {
                 </View>
             </ScrollView>
 
-            {/* Header - cập nhật lại vị trí các icon */}
+            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.headerButton}
@@ -602,17 +635,36 @@ const ProductDetailScreen = () => {
                 </TouchableOpacity>
 
                 <View style={styles.headerRight}>
-                    <TouchableOpacity style={styles.headerButton}>
-                        <Feather name="share-2" size={20} color="black" />
+                    <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={() => router.navigate('/(tabs)/cart')}
+                    >
+                        <View>
+                            <Ionicons name="cart-outline" size={24} color="black" />
+                            {cartCount > 0 && (
+                                <View style={styles.cartBadge}>
+                                    <Text style={styles.cartBadgeText}>
+                                        {cartCount > 99 ? '99+' : cartCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.headerButton}
                         onPress={handleGoHome}
                     >
-                        <MaterialCommunityIcons name="home-outline" size={24} color="black" />
+                        <Ionicons name="home-outline" size={24} color="black" />
                     </TouchableOpacity>
                 </View>
             </View>
+
+            <Toast
+                visible={toastVisible}
+                message={toastMessage}
+                type={toastType}
+                onHide={() => setToastVisible(false)}
+            />
         </SafeAreaView>
     );
 };
@@ -788,10 +840,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'transparent',
+        borderColor: '#ddd',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 1,
+        elevation: 2,
     },
     selectedColorOption: {
         borderColor: '#000',
+        borderWidth: 2,
     },
     sizeOptions: {
         flexDirection: 'row',
@@ -940,19 +1001,23 @@ const styles = StyleSheet.create({
     },
     cartBadge: {
         position: 'absolute',
-        top: 8,
-        right: 20,
+        right: -6,
+        top: -6,
         backgroundColor: '#FF424E',
         borderRadius: 10,
-        width: 16,
+        minWidth: 16,
         height: 16,
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 2,
     },
     cartBadgeText: {
         color: '#fff',
         fontSize: 10,
         fontWeight: 'bold',
+        textAlign: 'center',
+        includeFontPadding: false,
+        lineHeight: 12,
     },
 });
 
