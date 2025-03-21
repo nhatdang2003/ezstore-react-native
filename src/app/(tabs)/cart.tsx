@@ -17,8 +17,11 @@ import {
     MaterialCommunityIcons
 } from '@expo/vector-icons';
 import { FONT } from '@/src/constants/font';
+import { useRouter } from 'expo-router';
 
 const CartTab = () => {
+    const router = useRouter();
+
     const [items, setItems] = useState([
         { id: 1, selected: false, quantity: 1 },
         { id: 2, selected: false, quantity: 1 },
@@ -157,7 +160,9 @@ const CartTab = () => {
                         <Text style={styles.savingsLabel}>Tiết kiệm</Text>
                         <Text style={styles.savingsValue}>133.950đ</Text>
                     </View>
-                    <TouchableOpacity style={styles.checkoutButton}>
+                    <TouchableOpacity style={styles.checkoutButton}
+                        onPress={() => router.push('/cart/checkout')}
+                    >
                         <Feather name="shopping-cart" size={20} color="white" />
                         <Text style={styles.checkoutButtonText}>Tiến hành thanh toán</Text>
                     </TouchableOpacity>
@@ -383,7 +388,7 @@ const styles = StyleSheet.create({
     },
     checkoutButton: {
         backgroundColor: 'black',
-        borderRadius: 4,
+        borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

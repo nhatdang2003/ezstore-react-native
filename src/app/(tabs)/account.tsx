@@ -40,7 +40,8 @@ const AccountTab = () => {
                     title="Details"
                     onPress={() => router.push('/account/details')}
                 />
-                <MenuButton icon="shopping" title="Orders" onPress={() => { }} />
+                <MenuButton icon="shopping" title="Orders"
+                    onPress={() => { router.push('/account/orders') }} />
                 <MenuButton icon="star" title="Reviews" onPress={() => { }} />
             </View>
 
