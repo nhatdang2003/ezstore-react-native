@@ -12,6 +12,7 @@ import { getUserInfo, updateUserInfo, sendOTP, updateAvatar } from '@/src/servic
 import { GENDER } from '@/src/constants/profile'
 import { format } from "date-fns";
 import * as ImagePicker from 'expo-image-picker';
+import { SimpleLineIcons } from '@expo/vector-icons'
 const ProfileDetails = () => {
     const router = useRouter()
     const [userInfo, setUserInfo] = React.useState({
@@ -154,6 +155,13 @@ const ProfileDetails = () => {
     return (
         <CloseKeyboard>
             <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
+                <View style={styles.headerTab}>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <SimpleLineIcons name="arrow-left" size={20} color="black" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Thông tin chi tiết</Text>
+                    <View />
+                </View>
                 {isEdit ? (
                     <View style={styles.container}>
                         <View style={styles.content}>
@@ -260,6 +268,18 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    headerTab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        backgroundColor: '#FFF',
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontFamily: FONT.LORA_MEDIUM,
     },
     content: {
         padding: 16,
