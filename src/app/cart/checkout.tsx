@@ -1,46 +1,139 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, StatusBar, ScrollView, Animated, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, StatusBar, ScrollView, Animated, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { FONT } from '@/src/constants/font';
-import { useRouter } from 'expo-router';
-
-const CustomSwitch = ({ value, onValueChange }) => {
-    const translateX = useState(new Animated.Value(value ? 20 : 0))[0];
-
-    const toggleSwitch = () => {
-        Animated.spring(translateX, {
-            toValue: value ? 0 : 20,
-            useNativeDriver: true,
-        }).start();
-        onValueChange(!value);
-    };
-
-    return (
-        <Pressable
-            onPress={toggleSwitch}
-            style={[
-                styles.switchContainer,
-                { backgroundColor: value ? '#000' : '#E9E9EA' }
-            ]}
-        >
-            <Animated.View
-                style={[
-                    styles.switchThumb,
-                    {
-                        transform: [{ translateX }],
-                        backgroundColor: value ? '#fff' : '#fff'
-                    }
-                ]}
-            />
-        </Pressable>
-    );
-};
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import CustomSwitch from '@/src/components/CustomSwitch';
+import { getOrderPreview, checkoutOrder } from '@/src/services/order.service';
+import { OrderPreviewRes } from '@/src/types/order.type';
+import AlertDialog from '@/src/components/AlertModal';
+import { PaymentMethod, DeliveryMethod } from '@/src/constants/order';
 
 const CheckoutScreen = () => {
     const router = useRouter();
-    const [selectedPayment, setSelectedPayment] = useState('cod');
+    const params = useLocalSearchParams();
+
+    // Lấy cartItemIds từ params
+    const cartItemIds = params.cartItemIds ? JSON.parse(params.cartItemIds as string) : [];
+
+    // State cho các giá trị
+    const [selectedPayment, setSelectedPayment] = useState(PaymentMethod.COD);
+    const [selectedDelivery, setSelectedDelivery] = useState(DeliveryMethod.GHN);
     const [usePoints, setUsePoints] = useState(false);
+    const [shippingProfileId, setShippingProfileId] = useState<number | null>(null);
+    const [orderPreview, setOrderPreview] = useState<OrderPreviewRes | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+
+    // Note state
+    const [note, setNote] = useState('');
+
+    // Fetch order preview data
+    const fetchOrderPreview = async () => {
+        try {
+            setLoading(true);
+            const response = await getOrderPreview({
+                shippingProfileId,
+                cartItemIds,
+                note,
+                paymentMethod: selectedPayment,
+                deliveryMethod: selectedDelivery,
+                isUsePoint: usePoints
+            });
+
+            setShippingProfileId(response.data.shippingProfile.id);
+            setOrderPreview(response.data);
+            setError(null);
+        } catch (err) {
+            console.error('Lỗi khi lấy thông tin đơn hàng:', err);
+            setError('Không thể tải thông tin đơn hàng. Vui lòng thử lại sau.');
+            setAlertMessage('Không thể tải thông tin đơn hàng. Vui lòng thử lại sau.');
+            setAlertVisible(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Gọi API khi component mount
+    useEffect(() => {
+        if (cartItemIds.length > 0) {
+            fetchOrderPreview();
+        } else {
+            setError('Không có sản phẩm nào được chọn để thanh toán');
+            router.back();
+        }
+    }, [shippingProfileId, usePoints, selectedDelivery]);
+
+    // Xử lý nút thanh toán
+    const handlePayment = async () => {
+        try {
+            // Kiểm tra xem có địa chỉ giao hàng không
+            if (!orderPreview?.shippingProfile) {
+                setAlertMessage('Vui lòng chọn địa chỉ giao hàng');
+                setAlertVisible(true);
+                return;
+            }
+
+            setLoading(true);
+
+            // Gọi API thanh toán
+            const response = await checkoutOrder({
+                shippingProfileId,
+                cartItemIds,
+                note,
+                paymentMethod: selectedPayment,
+                deliveryMethod: selectedDelivery,
+                isUsePoint: usePoints
+            });
+
+            console.log(response)
+
+            // Xử lý kết quả dựa trên phương thức thanh toán
+            if (selectedPayment === PaymentMethod.COD) {
+                // Với COD, điều hướng ngay đến trang success hoặc fail
+                if (response.statusCode === 200) {
+                    router.navigate('/payment/success');
+                } else {
+                    router.navigate({
+                        pathname: '/payment/fail',
+                        params: { message: 'Đã xảy ra lỗi khi tạo đơn hàng. Vui lòng thử lại.' }
+                    });
+                }
+            } else if (selectedPayment === PaymentMethod.VNPAY) {
+                // Với VNPAY, điều hướng đến trang payment với URL thanh toán
+                if (response.data.paymentUrl) {
+                    router.navigate({
+                        pathname: '/payment/payment',
+                        params: { paymentUrl: response.data.paymentUrl }
+                    });
+                } else {
+                    router.navigate({
+                        pathname: '/payment/fail',
+                        params: { message: 'Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.' }
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Lỗi khi thanh toán:', error);
+            setAlertMessage('Có lỗi xảy ra trong quá trình thanh toán. Vui lòng thử lại sau.');
+            setAlertVisible(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Hiển thị loading khi đang tải
+    if (loading && !orderPreview) {
+        return (
+            <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="black" />
+                <Text style={{ marginTop: 16, fontFamily: FONT.LORA_MEDIUM }}>Đang tải thông tin đơn hàng...</Text>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -55,6 +148,12 @@ const CheckoutScreen = () => {
                 <View style={styles.placeholder} />
             </View>
 
+            {loading && (
+                <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size="small" color="black" />
+                </View>
+            )}
+
             <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Delivery Information */}
                 <View style={styles.section}>
@@ -65,50 +164,107 @@ const CheckoutScreen = () => {
                         </TouchableOpacity>
                     </View>
 
-                    <View style={styles.deliveryInfo}>
-                        <Text style={styles.deliveryName}>Đặng Minh Nhật</Text>
-                        <Text style={styles.deliveryAddress}>1 Võ văn ngân, Thủ Đức</Text>
-                        <Text style={styles.deliveryPhone}>0938951666</Text>
-                    </View>
+                    {orderPreview?.shippingProfile ? (
+                        <View style={styles.deliveryInfo}>
+                            <Text style={styles.deliveryName}>
+                                {orderPreview.shippingProfile.firstName} {orderPreview.shippingProfile.lastName}
+                            </Text>
+                            <Text style={styles.deliveryAddress}>
+                                {orderPreview.shippingProfile.address}, {orderPreview.shippingProfile.ward}, {orderPreview.shippingProfile.district}, {orderPreview.shippingProfile.province}
+                            </Text>
+                            <Text style={styles.deliveryPhone}>{orderPreview.shippingProfile.phoneNumber}</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.deliveryInfo}>
+                            <Text style={styles.deliveryName}>Chưa có địa chỉ giao hàng</Text>
+                            <TouchableOpacity style={styles.addAddressButton}>
+                                <Text style={styles.addAddressText}>+ Thêm địa chỉ</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
 
                 {/* Selected Products */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Sản phẩm đã chọn</Text>
 
-                    {/* Product 1 */}
-                    <View style={styles.productItem}>
-                        <Image
-                            source={{ uri: 'https://placeholder.svg?height=80&width=80' }}
-                            style={styles.productImage}
-                        />
-                        <View style={styles.productDetails}>
-                            <Text style={styles.productName}>Áo jumper</Text>
-                            <Text style={styles.productVariant}>Màu: Đen, Kích thước: L</Text>
-                            <View style={styles.priceRow}>
-                                <Text style={styles.currentPrice}>86.300đ</Text>
-                                <Text style={styles.originalPrice}>109.000đ</Text>
+                    {orderPreview?.lineItems.map((item) => (
+                        <View key={item.cartItemId} style={styles.productItem}>
+                            <Image
+                                source={{ uri: item.productVariant.image || item.image }}
+                                style={styles.productImage}
+                            />
+                            <View style={styles.productDetails}>
+                                <Text style={styles.productName}>{item.productName}</Text>
+                                <Text style={styles.productVariant}>
+                                    Màu: {item.productVariant.color}, Kích thước: {item.productVariant.size}
+                                </Text>
+                                <View style={styles.priceRow}>
+                                    <Text style={styles.currentPrice}>{item.finalPrice.toLocaleString()}đ</Text>
+                                    {item.discountRate > 0 && (
+                                        <Text style={styles.originalPrice}>{item.price.toLocaleString()}đ</Text>
+                                    )}
+                                </View>
+                                <Text style={styles.quantity}>Số lượng: {item.quantity}</Text>
+                                <Text style={styles.totalPrice}>
+                                    Tổng: {(item.finalPrice * item.quantity).toLocaleString()}đ
+                                </Text>
                             </View>
-                            <Text style={styles.quantity}>Số lượng: 1</Text>
-                            <Text style={styles.totalPrice}>Tổng: 86.300đ</Text>
                         </View>
+                    ))}
+                </View>
 
-                    </View>
+                {/* Note Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Ghi chú đơn hàng</Text>
+                    <TextInput
+                        style={styles.noteInput}
+                        placeholder="Nhập ghi chú cho đơn hàng"
+                        value={note}
+                        onChangeText={setNote}
+                        multiline={true}
+                        numberOfLines={1}
+                        textAlignVertical="top"
+                    />
+                </View>
 
-                    {/* Product 2 */}
-                    <View style={styles.productItem}>
-                        <Image
-                            source={{ uri: 'https://placeholder.svg?height=80&width=80' }}
-                            style={styles.productImage}
-                        />
-                        <View style={styles.productDetails}>
-                            <Text style={styles.productName}>Áo kiểu cổ chữ V</Text>
-                            <Text style={styles.productVariant}>Màu: Xanh dương, Kích thước: L</Text>
-                            <Text style={styles.currentPrice}>32.700đ</Text>
-                            <Text style={styles.quantity}>Số lượng: 1</Text>
-                            <Text style={styles.totalPrice}>Tổng: 32.700đ</Text>
+                {/* Delivery Method Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Phương thức giao hàng</Text>
+
+                    {/* GHN Option */}
+                    <TouchableOpacity
+                        style={styles.paymentOption}
+                        onPress={() => setSelectedDelivery(DeliveryMethod.GHN)}
+                    >
+                        <View style={styles.paymentIconContainer}>
+                            <MaterialCommunityIcons name="truck-delivery" size={30} color="black" />
                         </View>
-                    </View>
+                        <Text style={styles.paymentText}>Giao hàng tiêu chuẩn (GHN)</Text>
+                        <View style={[
+                            styles.radioButton,
+                            selectedDelivery === DeliveryMethod.GHN && styles.radioButtonSelected
+                        ]}>
+                            {selectedDelivery === DeliveryMethod.GHN && <View style={styles.radioButtonInner} />}
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* EXPRESS Option */}
+                    <TouchableOpacity
+                        style={styles.paymentOption}
+                        onPress={() => setSelectedDelivery(DeliveryMethod.EXPRESS)}
+                    >
+                        <View style={styles.paymentIconContainer}>
+                            <MaterialCommunityIcons name="rocket" size={30} color="black" />
+                        </View>
+                        <Text style={styles.paymentText}>Giao hàng hỏa tốc</Text>
+                        <View style={[
+                            styles.radioButton,
+                            selectedDelivery === DeliveryMethod.EXPRESS && styles.radioButtonSelected
+                        ]}>
+                            {selectedDelivery === DeliveryMethod.EXPRESS && <View style={styles.radioButtonInner} />}
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Payment Section */}
@@ -118,7 +274,7 @@ const CheckoutScreen = () => {
                     {/* COD Option */}
                     <TouchableOpacity
                         style={styles.paymentOption}
-                        onPress={() => setSelectedPayment('cod')}
+                        onPress={() => setSelectedPayment(PaymentMethod.COD)}
                     >
                         <View style={styles.paymentIconContainer}>
                             <MaterialCommunityIcons name="cash" size={30} color="black" />
@@ -126,16 +282,16 @@ const CheckoutScreen = () => {
                         <Text style={styles.paymentText}>Thanh toán khi nhận hàng</Text>
                         <View style={[
                             styles.radioButton,
-                            selectedPayment === 'cod' && styles.radioButtonSelected
+                            selectedPayment === PaymentMethod.COD && styles.radioButtonSelected
                         ]}>
-                            {selectedPayment === 'cod' && <View style={styles.radioButtonInner} />}
+                            {selectedPayment === PaymentMethod.COD && <View style={styles.radioButtonInner} />}
                         </View>
                     </TouchableOpacity>
 
                     {/* VnPay Option */}
                     <TouchableOpacity
                         style={styles.paymentOption}
-                        onPress={() => setSelectedPayment('vnpay')}
+                        onPress={() => setSelectedPayment(PaymentMethod.VNPAY)}
                     >
                         <View style={styles.paymentIconContainer}>
                             <Image
@@ -146,62 +302,90 @@ const CheckoutScreen = () => {
                         <Text style={styles.paymentText}>VNPay</Text>
                         <View style={[
                             styles.radioButton,
-                            selectedPayment === 'vnpay' && styles.radioButtonSelected
+                            selectedPayment === PaymentMethod.VNPAY && styles.radioButtonSelected
                         ]}>
-                            {selectedPayment === 'vnpay' && <View style={styles.radioButtonInner} />}
+                            {selectedPayment === PaymentMethod.VNPAY && <View style={styles.radioButtonInner} />}
                         </View>
                     </TouchableOpacity>
                 </View>
 
                 {/* Points Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Điểm thưởng</Text>
-                    <View style={styles.pointsContainer}>
-                        <View style={styles.pointsInfo}>
-                            <Text style={styles.pointsText}>Điểm hiện có: 1000</Text>
-                            <Text style={styles.pointsValue}>(Tương đương 10.000đ)</Text>
+                {orderPreview && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Điểm thưởng</Text>
+                        <View style={styles.pointsContainer}>
+                            <View style={styles.pointsInfo}>
+                                <Text style={styles.pointsText}>Điểm hiện có: {orderPreview.points}</Text>
+                                <Text style={styles.pointsValue}>
+                                    (Tương đương {(orderPreview.points * 100).toLocaleString()}đ)
+                                </Text>
+                            </View>
+                            <CustomSwitch
+                                value={usePoints}
+                                onValueChange={(newValue) => {
+                                    setUsePoints(newValue);
+                                }}
+                            />
                         </View>
-                        <CustomSwitch
-                            value={usePoints}
-                            onValueChange={setUsePoints}
-                        />
                     </View>
-                </View>
+                )}
 
                 {/* Payment Summary */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
+                {orderPreview && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
 
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Tổng tiền hàng</Text>
-                        <Text style={styles.summaryValue}>119.000đ</Text>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Tổng tiền hàng</Text>
+                            <Text style={styles.summaryValue}>
+                                {orderPreview.lineItems.reduce((total, item) => total + item.price * item.quantity, 0).toLocaleString()}đ
+                            </Text>
+                        </View>
+
+                        {orderPreview.discount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, styles.discountLabel]}>Giảm giá</Text>
+                                <Text style={styles.discountValue}>-{orderPreview.discount.toLocaleString()}đ</Text>
+                            </View>
+                        )}
+
+                        {orderPreview.pointDiscount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, styles.discountLabel]}>Sử dụng điểm</Text>
+                                <Text style={styles.discountValue}>-{orderPreview.pointDiscount.toLocaleString()}đ</Text>
+                            </View>
+                        )}
+
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Phí vận chuyển</Text>
+                            <Text style={styles.summaryValue}>{orderPreview.shippingFee.toLocaleString()}đ</Text>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.totalSummaryLabel}>Tổng thanh toán</Text>
+                            <Text style={styles.totalSummaryValue}>{orderPreview.finalTotal.toLocaleString()}đ</Text>
+                        </View>
                     </View>
-
-                    <View style={styles.summaryRow}>
-                        <Text style={[styles.summaryLabel, styles.discountLabel]}>Giảm giá</Text>
-                        <Text style={styles.discountValue}>-22.700đ</Text>
-                    </View>
-
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Phí vận chuyển</Text>
-                        <Text style={styles.summaryValue}>22.000đ</Text>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.totalSummaryLabel}>Tổng thanh toán</Text>
-                        <Text style={styles.totalSummaryValue}>119.000đ</Text>
-                    </View>
-                </View>
+                )}
 
                 {/* Total and Pay Button */}
                 <View style={styles.buttonContainer}>
-                    <TouchableOpacity style={styles.payButton}>
+                    <TouchableOpacity
+                        style={styles.payButton}
+                        onPress={handlePayment}
+                    >
                         <Text style={styles.payButtonText}>Thanh toán</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            <AlertDialog
+                visible={alertVisible}
+                message={alertMessage}
+                onClose={() => setAlertVisible(false)}
+            />
         </SafeAreaView>
     );
 };
@@ -230,6 +414,17 @@ const styles = StyleSheet.create({
     placeholder: {
         width: 24,
     },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 60,
+        left: 0,
+        right: 0,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        zIndex: 10,
+    },
     section: {
         paddingHorizontal: 24,
         paddingVertical: 16,
@@ -245,6 +440,14 @@ const styles = StyleSheet.create({
         fontFamily: FONT.LORA_MEDIUM,
         fontSize: 20,
         marginBottom: 16,
+    },
+    addAddressButton: {
+        marginTop: 8,
+        padding: 8,
+    },
+    addAddressText: {
+        color: '#007AFF',
+        fontSize: 16,
     },
     paymentOption: {
         flexDirection: 'row',
@@ -324,19 +527,6 @@ const styles = StyleSheet.create({
     pointsValue: {
         fontSize: 14,
         color: '#666',
-    },
-    // Switch styles
-    switchContainer: {
-        width: 50,
-        height: 30,
-        borderRadius: 15,
-        padding: 5,
-        justifyContent: 'center',
-    },
-    switchThumb: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
     },
     // Product styles
     productItem: {
@@ -462,6 +652,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    noteInput: {
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        minHeight: 30,
     },
 });
 

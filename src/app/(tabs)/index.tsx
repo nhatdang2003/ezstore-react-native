@@ -1,5 +1,5 @@
 import { ScrollView, View, StyleSheet } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import HomeCarousel from '@/src/components/HomeCarousel'
 import CategoryCarousel from '@/src/components/CategoryCarousel'
@@ -7,7 +7,9 @@ import SectionHeader from '@/src/components/SectionHeader'
 import { getFeaturedProducts, getNewProducts, getDiscountedProducts, getBestSellerProducts } from '@/src/services/product.service'
 import { Product } from '@/src/types/product.type'
 import { ProductCardProps } from '@/src/types/product.type'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
+import { useCartStore } from '@/src/store/cartStore'
+import { getUserCartInfo } from '@/src/services/user.service'
 
 const HomeTab = () => {
     const [featuredProducts, setFeaturedProducts] = useState<ProductCardProps[]>([])
@@ -15,6 +17,22 @@ const HomeTab = () => {
     const [newProducts, setNewProducts] = useState<ProductCardProps[]>([])
     const [discountedProducts, setDiscountedProducts] = useState<ProductCardProps[]>([])
     const [loading, setLoading] = useState(true)
+    const setCartCount = useCartStore(state => state.setCartCount);
+
+    useFocusEffect(
+        useCallback(() => {
+            const fetchUserInfo = async () => {
+                try {
+                    const userInfo = await getUserCartInfo();
+                    setCartCount(userInfo.data.cartItemsCount);
+                } catch (error) {
+                    console.error('Error fetching cart count:', error);
+                }
+            };
+
+            fetchUserInfo();
+        }, [])
+    );
 
     useEffect(() => {
         fetchAllProducts()

@@ -21,6 +21,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import ConfirmModal from '@/src/components/ConfirmModal';
 import { getUserCartInfo } from '@/src/services/user.service';
 import { useCartStore } from '@/src/store/cartStore';
+import AlertModal from '@/src/components/AlertModal';
 
 // Hàm chuyển đổi mã màu từ tên màu
 const getColorCode = (colorName: string): string => {
@@ -55,6 +56,9 @@ const CartTab = () => {
     const [error, setError] = useState<string | null>(null);
     const [dialogVisible, setDialogVisible] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertTitle, setAlertTitle] = useState<string | undefined>(undefined);
 
     const setCartCount = useCartStore(state => state.setCartCount);
 
@@ -119,10 +123,10 @@ const CartTab = () => {
             console.error('Lỗi khi cập nhật số lượng:', error);
             // Rollback UI nếu có lỗi
             fetchCartItems();
-            Alert.alert(
-                "Lỗi",
-                "Không thể cập nhật số lượng sản phẩm. Vui lòng thử lại sau."
-            );
+
+            // Thay thế Alert.alert bằng AlertDialog
+            setAlertMessage("Không thể cập nhật số lượng sản phẩm. Vui lòng thử lại sau.");
+            setAlertVisible(true);
         }
     };
 
@@ -160,10 +164,10 @@ const CartTab = () => {
             console.error('Lỗi khi xóa sản phẩm:', error);
             // Rollback UI nếu có lỗi
             fetchCartItems();
-            Alert.alert(
-                "Lỗi",
-                "Không thể xóa sản phẩm. Vui lòng thử lại sau."
-            );
+
+            // Thay thế Alert.alert bằng AlertDialog
+            setAlertMessage("Không thể xóa sản phẩm. Vui lòng thử lại sau.");
+            setAlertVisible(true);
         } finally {
             setDialogVisible(false);
             setItemToDelete(null);
@@ -200,15 +204,16 @@ const CartTab = () => {
 
     const handleCheckout = () => {
         if (selectedItems.length === 0) {
-            Alert.alert("Thông báo", "Vui lòng chọn ít nhất một sản phẩm để thanh toán");
+            setAlertMessage("Vui lòng chọn ít nhất một sản phẩm để thanh toán");
+            setAlertVisible(true);
             return;
         }
 
-        // Chuyển đến trang thanh toán với các sản phẩm đã chọn
-        router.push({
-            pathname: '/(payment)/payment',
-            params: {
-                selectedItems: JSON.stringify(selectedItems)
+        // Pass the selected cartItemIds to the checkout screen
+        router.navigate({
+            pathname: '/cart/checkout',
+            params: { 
+                cartItemIds: JSON.stringify(selectedItems) 
             }
         });
     };
@@ -388,6 +393,12 @@ const CartTab = () => {
                     setItemToDelete(null);
                 }}
                 onConfirm={handleConfirmDelete}
+            />
+
+            <AlertModal
+                visible={alertVisible}
+                message={alertMessage}
+                onClose={() => setAlertVisible(false)}
             />
         </SafeAreaView>
     );
