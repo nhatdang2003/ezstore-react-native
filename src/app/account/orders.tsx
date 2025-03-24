@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, memo, useCallback, useRef } from "react";
 import {
     View,
     Text,
@@ -7,6 +7,8 @@ import {
     ScrollView,
     TouchableOpacity,
     SafeAreaView,
+    ActivityIndicator,
+    FlatList,
 } from "react-native";
 import { COLOR } from "@/src/constants/color";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
@@ -16,95 +18,258 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { STATUS_ORDER } from "@/src/constants/order";
 import { formatPrice } from "@/src/utils/product";
 import CustomButton from "@/src/components/CustomButton";
+import { OrderHistory } from "@/src/types/order.type";
+import { getOrderHistoryUser } from "@/src/services/order.service";
 
 const OrderHistoryScreen = () => {
     const [activeTab, setActiveTab] = useState<string>(STATUS_ORDER[0].value);
-    // const [orders, setOrders] = useState([])
-    const [pendingOrders, setPendingOrders] = useState([])
-    const [processingOrders, setProcessingOrders] = useState([])
-    const [shippingOrders, setShippingOrders] = useState([])
-    const [deliveredOrders, setDeliveredOrders] = useState([])
-    const [cancelledOrders, setCancelledOrders] = useState([])
-    const [returnedOrders, setReturnedOrders] = useState([])
 
-    const dataOrders = {
-        PENDING: pendingOrders,
-        PROCESSING: processingOrders,
-        SHIPPING: shippingOrders,
-        DELIVERED: deliveredOrders,
-        CANCELLED: cancelledOrders,
-        RETURNED: returnedOrders
-    }
+    const [orders, setOrders] = useState<Record<string, OrderHistory[]>>({
+        PENDING: [],
+        PROCESSING: [],
+        SHIPPING: [],
+        DELIVERED: [],
+        CANCELLED: [],
+        RETURNED: []
+    });
 
-    const getOrders = async (status: string) => { }
+    const [page, setPage] = useState<Record<string, number>>({
+        PENDING: 0,
+        PROCESSING: 0,
+        SHIPPING: 0,
+        DELIVERED: 0,
+        CANCELLED: 0,
+        RETURNED: 0
+    });
 
-    useEffect(() => {
-        if (activeTab === 'PENDING' && pendingOrders.length === 0) {
-            const res = getOrders(activeTab)
-            setPendingOrders(res)
-        } else if (activeTab === 'PROCESSING' && processingOrders.length === 0) {
-            const res = getOrders(activeTab)
-            setProcessingOrders(res)
-        } else if (activeTab === 'SHIPPING' && shippingOrders.length === 0) {
-            const res = getOrders(activeTab)
-            setShippingOrders(res)
-        } else if (activeTab === 'DELIVERED' && deliveredOrders.length === 0) {
-            const res = getOrders(activeTab)
-            setDeliveredOrders(res)
-        } else if (activeTab === 'CANCELLED' && cancelledOrders.length === 0) {
-            const res = getOrders(activeTab)
-            setCancelledOrders(res)
-        } else if (activeTab === 'RETURNED' && returnedOrders.length === 0) {
-            const res = getOrders(activeTab)
-            setReturnedOrders(res)
+    const [loading, setLoading] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState<Record<string, boolean>>({
+        PENDING: true,
+        PROCESSING: true,
+        SHIPPING: true,
+        DELIVERED: true,
+        CANCELLED: true,
+        RETURNED: true
+    });
+
+    // Thêm một Ref để theo dõi requests đang xử lý, thay vì dùng state
+    const pendingRequests = useRef<Record<string, boolean>>({
+        PENDING: false,
+        PROCESSING: false,
+        SHIPPING: false,
+        DELIVERED: false,
+        CANCELLED: false,
+        RETURNED: false
+    });
+
+    // Thêm state để lưu trữ trạng thái expanded cho từng đơn hàng
+    const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+
+    // Cải thiện hàm fetchData để xử lý trùng lặp
+    const fetchData = useCallback(async () => {
+        const status = activeTab;
+        const currentPage = page[status];
+
+        // Kiểm tra hasMore trước khi thực hiện bất kỳ hành động nào 
+        if (!hasMore[status]) {
+            return;
         }
-    }, [activeTab])
 
-    const orders = [
-        {
-            id: 1,
-            tag: "Yêu thích",
-            seller: "Thang Nhôm Rút Nhật Bản 107",
-            status: "Hoàn thành",
-            name: "Bánh xe ghế văn phòng cao cấp, bánh xe JU...",
-            details: "Tỷ Đẩy - Bánh Trắng",
-            quantity: 1,
-            price: 13500,
-            totalPrice: 16500,
-            image: require("./../../assets/images/facebook-logo.png"),
-            canReview: true,
-            canBuyAgain: true,
-        },
-        {
-            id: 2,
-            seller: "Gia Dụng Jumi",
-            status: "Hoàn thành",
-            name: "Bộ Ga Giường Trần Bông Phi Lụa Mềm Mịn...",
-            details: "Màu Đỏ, 1m2x1m9 (+2 vỏ gối)",
-            quantity: 1,
-            originalPrice: 260000,
-            price: 155000,
-            totalPrice: 166000,
-            image: require("./../../assets/images/facebook-logo.png"),
-            canReview: false,
-            canBuyAgain: true,
-        },
-        {
-            id: 3,
-            seller: "ZF.CLUB",
-            status: "Hoàn thành",
-            name: "Quần Short ZONEF CLUB Kaki Nam Nữ, Quần...",
-            details: "Kem L (63-80kg)",
-            quantity: 2,
-            originalPrice: 99000,
-            price: 68000,
-            totalPrice: 189020,
-            image: require("./../../assets/images/facebook-logo.png"),
-            canReview: false,
-            canBuyAgain: true,
-            hasMore: true,
-        },
-    ];
+        // Nếu đang có request xử lý cho tab này, bỏ qua
+        if (pendingRequests.current[status]) {
+            return;
+        }
+
+        if (loading || loadingMore) {
+            return;
+        }
+
+        // Đánh dấu request đang xử lý
+        pendingRequests.current[status] = true;
+        setLoadingMore(true);
+
+        try {
+            const response = await getOrderHistoryUser({
+                page: currentPage,
+                size: 10,
+                status
+            });
+
+            const newOrders = response.data.data;
+            const { page: responsePage, pages: totalPages } = response.data.meta;
+            const moreDataAvailable = responsePage < totalPages - 1;
+
+            setPage(prev => ({ ...prev, [status]: responsePage + 1 }));
+            setHasMore(prev => ({ ...prev, [status]: moreDataAvailable }));
+
+            // Xử lý trùng lặp: Tạo một map để lưu tất cả orders hiện tại + mới
+            setOrders(prev => {
+                const existingOrders = prev[status];
+                const allOrdersMap = new Map<number, OrderHistory>();
+
+                existingOrders.forEach(order => {
+                    allOrdersMap.set(order.id, order);
+                });
+
+                newOrders.forEach(order => {
+                    allOrdersMap.set(order.id, order);
+                });
+
+                return {
+                    ...prev,
+                    [status]: Array.from(allOrdersMap.values())
+                };
+            });
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            setHasMore(prev => ({ ...prev, [status]: false }));
+        } finally {
+            setLoadingMore(false);
+            // Đánh dấu đã xử lý xong
+            pendingRequests.current[status] = false;
+        }
+    }, [activeTab, page, hasMore]);
+
+    const keyExtractor = useCallback((item: OrderHistory) =>
+        `order-${item.id}`,
+        []
+    );
+
+    // Hàm để toggle trạng thái expanded cho một đơn hàng
+    const toggleExpand = useCallback((orderId: number) => {
+        setExpandedItems(prev => ({
+            ...prev,
+            [orderId]: !prev[orderId]
+        }));
+    }, []);
+
+    const OrderItem = memo(({ order }: { order: OrderHistory }) => {
+        // Quản lý trạng thái mở rộng trong chính component này
+        const [expanded, setExpanded] = useState(false);
+
+        // Toggle function local
+        const handleToggleExpand = () => {
+            setExpanded(prev => !prev);
+        };
+
+        return (
+            <View style={styles.orderCard}>
+                {/* First product info (always shown) */}
+                <View style={styles.productRow}>
+                    {order.lineItems[0]?.variantImage ? (
+                        <Image
+                            source={{ uri: order.lineItems[0].variantImage }}
+                            style={styles.productImage}
+                        />
+                    ) : (
+                        <View style={styles.productImage} />
+                    )}
+                    <View style={styles.productInfo}>
+                        <Text style={styles.productName} numberOfLines={1}>
+                            {order.lineItems[0]?.productName || "Sản phẩm"}
+                        </Text>
+                        <View style={styles.containerDetail}>
+                            <Text style={styles.productDetails}>
+                                {order.lineItems[0]?.color} {order.lineItems[0]?.size}
+                            </Text>
+                            <Text style={styles.quantityText}>x{order.lineItems[0]?.quantity || 0}</Text>
+                        </View>
+                        <View style={styles.priceRow}>
+                            <Text style={styles.price}>
+                                {formatPrice(order.lineItems[0]?.unitPrice || 0)}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Additional products (shown only when expanded) */}
+                {expanded && order.lineItems.slice(1).map((item, index) => (
+                    <View key={`item-${index}`} style={[styles.productRow, styles.additionalProductRow]}>
+                        {item.variantImage ? (
+                            <Image
+                                source={{ uri: item.variantImage }}
+                                style={styles.productImage}
+                            />
+                        ) : (
+                            <View style={styles.productImage} />
+                        )}
+                        <View style={styles.productInfo}>
+                            <Text style={styles.productName} numberOfLines={1}>
+                                {item.productName || "Sản phẩm"}
+                            </Text>
+                            <View style={styles.containerDetail}>
+                                <Text style={styles.productDetails}>
+                                    {item.color} {item.size}
+                                </Text>
+                                <Text style={styles.quantityText}>x{item.quantity || 0}</Text>
+                            </View>
+                            <View style={styles.priceRow}>
+                                <Text style={styles.price}>
+                                    {formatPrice(item.unitPrice || 0)}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                ))}
+
+                <View style={styles.totalRow}>
+                    <Text style={styles.totalText}>
+                        Tổng số tiền ({order.lineItems.length} sản phẩm):
+                    </Text>
+                    <Text style={styles.totalPrice}>
+                        {formatPrice(order.finalTotal)}
+                    </Text>
+                </View>
+
+                {/* Action buttons */}
+                <View style={styles.actionRow}>
+                    {order.canReview && !order.isReviewed && activeTab === "DELIVERED" && (
+                        <CustomButton
+                            variant="outlined"
+                            title="Đánh giá"
+                            onPress={() => { }}
+                            style={styles.reviewButton}
+                            textStyle={styles.reviewButtonText}
+                        />
+                    )}
+                    {order.isReviewed && activeTab === "DELIVERED" && (
+                        <CustomButton
+                            variant="outlined"
+                            title="Xem đánh giá"
+                            onPress={() => { }}
+                            style={styles.reviewButton}
+                            textStyle={styles.reviewButtonText}
+                        />
+                    )}
+                </View>
+
+                {/* Show more button for multiple items */}
+                {order.lineItems.length > 1 && (
+                    <TouchableOpacity
+                        style={styles.showMoreButton}
+                        onPress={handleToggleExpand}  // Sử dụng hàm local
+                    >
+                        <Text style={styles.showMoreText}>
+                            {expanded ? "Thu gọn" : "Xem thêm"}
+                        </Text>
+                        <MaterialCommunityIcons
+                            name={expanded ? "chevron-up" : "chevron-down"}
+                            size={16}
+                            color="#666"
+                        />
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
+    }, (prevProps, nextProps) => {
+        const prevOrder = prevProps.order;
+        const nextOrder = nextProps.order;
+        const prevExpanded = expandedItems[prevOrder.id];
+        const nextExpanded = expandedItems[nextOrder.id];
+
+        return prevOrder.id === nextOrder.id && prevExpanded === nextExpanded;
+    });
 
     return (
         <SafeAreaView style={styles.container}>
@@ -146,67 +311,49 @@ const OrderHistoryScreen = () => {
             </View>
 
             {/* Orders */}
-            <ScrollView style={styles.ordersContainer}>
-                {dataOrders[activeTab].map((order) => (
-                    <View key={order.id} style={styles.orderCard}>
-                        {/* Product info */}
-                        <View style={styles.productRow}>
-                            <Image source={order.image} style={styles.productImage} />
-                            <View style={styles.productInfo}>
-                                <Text style={styles.productName} numberOfLines={1}>
-                                    {order.name}
-                                </Text>
-                                <View style={styles.containerDetail}>
-                                    <Text style={styles.productDetails}>{order.details}</Text>
-                                    <Text style={styles.quantityText}>x{order.quantity}</Text>
-                                </View>
-                                <View style={styles.priceRow}>
-                                    {order.originalPrice && (
-                                        <Text style={styles.originalPrice}>
-                                            {formatPrice(order.originalPrice)}
-                                        </Text>
-                                    )}
-                                    <Text style={styles.price}>{formatPrice(order.price)}</Text>
-                                </View>
-                            </View>
-                        </View>
+            <FlatList
+                data={orders[activeTab]}
+                keyExtractor={keyExtractor}
+                renderItem={({ item }) => <OrderItem order={item} />}
 
-                        <View style={styles.totalRow}>
-                            <Text style={styles.totalText}>
-                                Tổng số tiền ({order.quantity} sản phẩm):
-                            </Text>
-                            <Text style={styles.totalPrice}>
-                                {formatPrice(order.totalPrice)}
-                            </Text>
-                        </View>
+                // Tăng giá trị để cải thiện hiệu suất
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={3}
 
-                        {/* Action buttons */}
-                        <View style={styles.actionRow}>
-                            {order.canReview && (
-                                <CustomButton
-                                    variant="outlined"
-                                    title="Đánh giá"
-                                    onPress={() => { }}
-                                    style={styles.reviewButton}
-                                    textStyle={styles.reviewButtonText}
-                                />
-                            )}
-                        </View>
+                // Tối ưu load more
+                onEndReachedThreshold={0.5}
+                onEndReached={() => {
+                    if (hasMore[activeTab]) {
+                        fetchData();
+                    }
+                }}
 
-                        {/* Show more button */}
-                        {order.hasMore && (
-                            <TouchableOpacity style={styles.showMoreButton}>
-                                <Text style={styles.showMoreText}>Xem thêm</Text>
-                                <MaterialCommunityIcons
-                                    name="chevron-down"
-                                    size={16}
-                                    color="#666"
-                                />
-                            </TouchableOpacity>
-                        )}
+                ListEmptyComponent={loading ? null : (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Không có đơn hàng nào</Text>
                     </View>
-                ))}
-            </ScrollView>
+                )}
+                ListFooterComponent={
+                    <>
+                        {loadingMore && (
+                            <ActivityIndicator
+                                size="small"
+                                color={COLOR.PRIMARY}
+                                style={styles.loadingMoreIndicator}
+                            />
+                        )}
+                    </>
+                }
+                contentContainerStyle={[
+                    styles.ordersContainer,
+                    orders[activeTab].length === 0 && styles.emptyListContainer
+                ]}
+
+                // Bật memoization cho items
+                removeClippedSubviews={true}
+                updateCellsBatchingPeriod={100}
+            />
         </SafeAreaView>
     );
 };
@@ -264,32 +411,6 @@ const styles = StyleSheet.create({
         padding: 12,
         marginBottom: 10,
     },
-    sellerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 10,
-    },
-    tagContainer: {
-        backgroundColor: "#FF4D4F",
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 3,
-        marginRight: 8,
-    },
-    tagText: {
-        color: "#FFF",
-        fontSize: 12,
-        fontWeight: "500",
-    },
-    sellerName: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: "500",
-    },
-    orderStatus: {
-        fontSize: 13,
-        color: "#FF4D4F",
-    },
     productRow: {
         flexDirection: "row",
         marginBottom: 10,
@@ -299,6 +420,7 @@ const styles = StyleSheet.create({
         height: 80,
         borderRadius: 4,
         marginRight: 10,
+        backgroundColor: "#f0f0f0"
     },
     productInfo: {
         flex: 1,
@@ -317,10 +439,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#666",
         marginBottom: 4,
-    },
-    quantityRow: {
-        flexDirection: "row",
-        justifyContent: "flex-end",
     },
     quantityText: {
         fontSize: 13,
@@ -364,11 +482,11 @@ const styles = StyleSheet.create({
     },
     reviewButton: {
         paddingVertical: 10,
-        borderColor: COLOR.PRIMARY,
+        borderColor: 'gray',
         borderWidth: 1
     },
     reviewButtonText: {
-        color: '#000',
+        color: '#333',
         fontSize: 14,
     },
     showMoreButton: {
@@ -382,33 +500,34 @@ const styles = StyleSheet.create({
         color: "#666",
         marginRight: 5,
     },
-    bottomBanner: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#000",
-        paddingVertical: 8,
-        paddingHorizontal: 15,
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
     },
-    liveTag: {
-        backgroundColor: "#FF4D4F",
-        paddingHorizontal: 5,
-        paddingVertical: 2,
-        borderRadius: 3,
-        marginRight: 8,
+    emptyText: {
+        fontSize: 16,
+        color: '#666',
+        fontFamily: FONT.LORA,
     },
-    liveTagText: {
-        color: "#FFF",
-        fontSize: 12,
-        fontWeight: "bold",
+    loadingMoreIndicator: {
+        padding: 10,
+        marginBottom: 10,
     },
-    bannerText: {
-        flex: 1,
-        color: "#FFF",
-        fontSize: 14,
+    loadMoreButton: {
+        padding: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    bannerStatus: {
-        color: "#FF4D4F",
-        fontSize: 13,
+    emptyListContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    additionalProductRow: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: "#F0F0F0",
     },
 });
 

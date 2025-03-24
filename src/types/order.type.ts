@@ -60,3 +60,37 @@ interface ProductVariant {
     size: string,
     image: string
 }
+
+export interface OrderLineItem {
+    id: number;
+    productName: string;
+    color: string;
+    size: string;
+    variantImage: string;
+    quantity: number;
+    unitPrice: number;
+    discount: number;
+}
+
+export interface OrderHistory {
+    id: number;
+    code: string;
+    orderDate: string;
+    status:
+    | "PENDING"
+    | "PROCESSING"
+    | "SHIPPING"
+    | "DELIVERED"
+    | "CANCELLED"
+    | "RETURNED";
+    paymentMethod: "COD" | "VNPAY";
+    paymentStatus: "PENDING" | "SUCCESS" | "FAILED";
+    lineItems: OrderLineItem[];
+    total: number;
+    shippingFee: number;
+    discount: number;
+    finalTotal: number;
+    canReview: boolean;
+    isReviewed: boolean;
+    cancelReason: string | null;
+}
