@@ -37,12 +37,12 @@ const AccountTab = () => {
             <View style={styles.section}>
                 <MenuButton
                     icon="account-details"
-                    title="Details"
+                    title="Chi tiết"
                     onPress={() => router.push('/account/details')}
                 />
-                <MenuButton icon="shopping" title="Orders"
+                <MenuButton icon="shopping" title="Đơn hàng"
                     onPress={() => { router.push('/account/orders') }} />
-                <MenuButton icon="star" title="Reviews" onPress={() => { }} />
+                <MenuButton icon="star" title="Địa chỉ" onPress={() => { router.push('/account/address') }} />
             </View>
 
 

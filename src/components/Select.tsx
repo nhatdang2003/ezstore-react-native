@@ -5,7 +5,7 @@ import { COLOR } from '../constants/color';
 
 interface SelectOption {
     label: string;
-    value: string;
+    value: string | number;
 }
 
 interface SelectProps {
@@ -24,25 +24,28 @@ const Select = ({
     onChange,
     options,
     label,
-    placeholder = 'Select an option',
+    placeholder = 'Chọn',
     icon,
     error,
     disabled = false
 }: SelectProps) => {
+    const iconColor = value ? '#333' : '#999';
     const styledIcon = icon && React.cloneElement(icon as React.ReactElement, {
-        color: '#666'
+        color: iconColor
     });
 
     return (
         <View style={styles.container}>
             <View style={styles.pickerContainer} >
-                {styledIcon}
+                <View style={styles.icon}>{styledIcon}</View>
                 <Picker
                     style={styles.picker}
+                    placeholder={placeholder}
                     selectedValue={value}
                     onValueChange={(itemValue, itemIndex) =>
                         onChange(itemValue)
                     }>
+                    <Picker.Item label={placeholder} value="" enabled={value === ""} style={styles.placeholder} />
                     {options.map((item) => <Picker.Item key={item.value} label={item.label} value={item.value} />)}
                 </Picker>
             </View>
@@ -55,24 +58,35 @@ const styles = StyleSheet.create({
     container: {
         justifyContent: 'center',
         alignItems: 'center',
+        borderRadius: 8
     },
     pickerContainer: {
+        position: 'relative',
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
         borderColor: COLOR.BACKGROUND,
         backgroundColor: COLOR.BACKGROUND,
         borderRadius: 8,
-        paddingLeft: 16
+        paddingLeft: 28
     },
     picker: {
         flex: 1,
         backgroundColor: COLOR.BACKGROUND,
         borderWidth: 1,
-        borderColor: COLOR.BACKGROUND
+        borderColor: COLOR.BACKGROUND,
+        borderRadius: 8
+    },
+    placeholder: {
+        color: '#999'
     },
     icon: {
-        color: '#666'
+        position: 'absolute',
+        left: 12,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 100
     }
 })
 

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, SafeAreaView, StatusBa
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { FONT } from '@/src/constants/font';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useSegments } from 'expo-router';
 import CustomSwitch from '@/src/components/CustomSwitch';
 import { getOrderPreview, checkoutOrder } from '@/src/services/order.service';
 import { OrderPreviewRes } from '@/src/types/order.type';
@@ -12,10 +12,12 @@ import { PaymentMethod, DeliveryMethod } from '@/src/constants/order';
 
 const CheckoutScreen = () => {
     const router = useRouter();
+    const segments = useSegments();
     const params = useLocalSearchParams();
 
     // Lấy cartItemIds từ params
     const cartItemIds = params.cartItemIds ? JSON.parse(params.cartItemIds as string) : [];
+    const selectedID = params.selectedID
 
     // State cho các giá trị
     const [selectedPayment, setSelectedPayment] = useState(PaymentMethod.COD);
@@ -36,7 +38,7 @@ const CheckoutScreen = () => {
         try {
             setLoading(true);
             const response = await getOrderPreview({
-                shippingProfileId,
+                shippingProfileId: Number(selectedID) ?? shippingProfileId,
                 cartItemIds,
                 note,
                 paymentMethod: selectedPayment,
@@ -65,7 +67,7 @@ const CheckoutScreen = () => {
             setError('Không có sản phẩm nào được chọn để thanh toán');
             router.back();
         }
-    }, [shippingProfileId, usePoints, selectedDelivery]);
+    }, [usePoints, selectedDelivery]);
 
     // Xử lý nút thanh toán
     const handlePayment = async () => {
@@ -159,7 +161,15 @@ const CheckoutScreen = () => {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Thông tin nhận hàng</Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => {
+                            router.replace({
+                                pathname: '/cart/choose_address',
+                                params: {
+                                    selectedID: shippingProfileId,
+                                    cartItemIds: JSON.stringify(cartItemIds)
+                                }
+                            })
+                        }}>
                             <Text style={styles.editButton}>Sửa</Text>
                         </TouchableOpacity>
                     </View>
@@ -386,7 +396,7 @@ const CheckoutScreen = () => {
                 message={alertMessage}
                 onClose={() => setAlertVisible(false)}
             />
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 

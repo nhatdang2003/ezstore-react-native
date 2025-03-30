@@ -1,6 +1,6 @@
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, ScrollView } from "react-native";
 import React, { useState } from "react";
-import { useRouter } from "expo-router";
+import { router, useRouter } from "expo-router";
 import Input from "@/src/components/Input";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import CustomButton from "@/src/components/CustomButton";
@@ -21,7 +21,7 @@ const RegisterScreen = () => {
         firstName: "",
         lastName: "",
         birthDate: new Date(),
-        gender: "male",
+        gender: "",
     });
 
     const [errors, setErrors] = useState({
@@ -116,125 +116,127 @@ const RegisterScreen = () => {
     };
 
     return (
-        <CloseKeyboard>
-            <View style={styles.container}>
-                <View style={styles.logoContainer}>
-                    <Image
-                        source={require("@/src/assets/images/icon.png")}
-                        style={styles.logo}
-                        resizeMode="contain"
-                    />
-                </View>
-
-                <View style={styles.formContainer}>
-                    <View>
-                        <Input
-                            value={input.email}
-                            onChangeText={(text) => {
-                                setInput(prev => ({ ...prev, email: text }));
-                                setErrors(prev => ({ ...prev, email: '' }));
-                            }}
-                            placeholder="Email"
-                            leftIcon={<MaterialCommunityIcons name="email-outline" size={24} />}
-                            keyboardType="email-address"
+        <ScrollView showsVerticalScrollIndicator={false}>
+            <CloseKeyboard>
+                <View style={styles.container}>
+                    <View style={styles.logoContainer}>
+                        <Image
+                            source={require("@/src/assets/images/icon.png")}
+                            style={styles.logo}
+                            resizeMode="contain"
                         />
-                        <ErrorMessageInput message={errors.email} />
                     </View>
 
-                    <View>
-                        <Input
-                            value={input.password}
-                            onChangeText={(text) => {
-                                setInput(prev => ({ ...prev, password: text }));
-                                setErrors(prev => ({ ...prev, password: '' }));
-                            }}
-                            placeholder="Mật khẩu"
-                            type="password"
-                            leftIcon={<MaterialCommunityIcons name="lock-outline" size={24} />}
-                        />
-                        <ErrorMessageInput message={errors.password} />
-                    </View>
-
-                    <View style={styles.nameContainer}>
-                        <View style={styles.nameField}>
+                    <View style={styles.formContainer}>
+                        <View>
                             <Input
-                                value={input.lastName}
+                                value={input.email}
                                 onChangeText={(text) => {
-                                    setInput(prev => ({ ...prev, lastName: text }));
-                                    setErrors(prev => ({ ...prev, lastName: '' }));
+                                    setInput(prev => ({ ...prev, email: text }));
+                                    setErrors(prev => ({ ...prev, email: '' }));
                                 }}
-                                placeholder="Họ"
-                                leftIcon={<MaterialCommunityIcons name="account-outline" size={24} />}
+                                placeholder="Email"
+                                leftIcon={<MaterialCommunityIcons name="email-outline" size={24} />}
+                                keyboardType="email-address"
                             />
-                            <ErrorMessageInput message={errors.lastName} />
+                            <ErrorMessageInput message={errors.email} />
                         </View>
 
-                        <View style={styles.nameField}>
+                        <View>
                             <Input
-                                value={input.firstName}
+                                value={input.password}
                                 onChangeText={(text) => {
-                                    setInput(prev => ({ ...prev, firstName: text }));
-                                    setErrors(prev => ({ ...prev, firstName: '' }));
+                                    setInput(prev => ({ ...prev, password: text }));
+                                    setErrors(prev => ({ ...prev, password: '' }));
                                 }}
-                                placeholder="Tên"
-                                leftIcon={<MaterialCommunityIcons name="account-outline" size={24} />}
+                                placeholder="Mật khẩu"
+                                type="password"
+                                leftIcon={<MaterialCommunityIcons name="lock-outline" size={24} />}
                             />
-                            <ErrorMessageInput message={errors.firstName} />
+                            <ErrorMessageInput message={errors.password} />
                         </View>
-                    </View>
 
-                    <DatePicker
-                        value={input.birthDate}
-                        onChange={(date) => {
-                            setInput(prev => ({ ...prev, birthDate: date }));
-                            setErrors(prev => ({ ...prev, birthDate: '' }));
-                        }}
-                        placeholder="Ngày sinh"
-                    />
+                        <View style={styles.nameContainer}>
+                            <View style={styles.nameField}>
+                                <Input
+                                    value={input.lastName}
+                                    onChangeText={(text) => {
+                                        setInput(prev => ({ ...prev, lastName: text }));
+                                        setErrors(prev => ({ ...prev, lastName: '' }));
+                                    }}
+                                    placeholder="Họ"
+                                    leftIcon={<MaterialCommunityIcons name="account-outline" size={24} />}
+                                />
+                                <ErrorMessageInput message={errors.lastName} />
+                            </View>
 
-                    <Select
-                        value={input.gender}
-                        onChange={(value) => {
-                            setInput(prev => ({ ...prev, gender: value }));
-                            setErrors(prev => ({ ...prev, gender: '' }));
-                        }}
-                        options={genderOptions}
-                        placeholder="Giới tính"
-                        icon={<MaterialCommunityIcons name="gender-male-female" size={24} />}
-                    />
-                    <ErrorMessageInput message={errors.gender} />
+                            <View style={styles.nameField}>
+                                <Input
+                                    value={input.firstName}
+                                    onChangeText={(text) => {
+                                        setInput(prev => ({ ...prev, firstName: text }));
+                                        setErrors(prev => ({ ...prev, firstName: '' }));
+                                    }}
+                                    placeholder="Tên"
+                                    leftIcon={<MaterialCommunityIcons name="account-outline" size={24} />}
+                                />
+                                <ErrorMessageInput message={errors.firstName} />
+                            </View>
+                        </View>
 
-                    <CustomButton
-                        onPress={handleRegister}
-                        title="Đăng ký"
-                        style={styles.registerButton}
-                        disabled={isLoading}
-                    />
+                        <DatePicker
+                            value={input.birthDate}
+                            onChange={(date) => {
+                                setInput(prev => ({ ...prev, birthDate: date }));
+                                setErrors(prev => ({ ...prev, birthDate: '' }));
+                            }}
+                            placeholder="Ngày sinh"
+                        />
 
-                    <View style={styles.dividerContainer}>
-                        <View style={styles.divider} />
-                        <Text style={styles.orText}>hoặc tiếp tục với</Text>
-                        <View style={styles.divider} />
-                    </View>
+                        <Select
+                            value={input.gender}
+                            onChange={(value) => {
+                                setInput(prev => ({ ...prev, gender: value }));
+                                setErrors(prev => ({ ...prev, gender: '' }));
+                            }}
+                            options={genderOptions}
+                            placeholder="Giới tính"
+                            icon={<MaterialCommunityIcons name="gender-male-female" size={24} />}
+                        />
+                        <ErrorMessageInput message={errors.gender} />
 
-                    <SocialButtons
-                        onGooglePress={() => { }}
-                        onFacebookPress={() => { }}
-                        onApplePress={() => { }}
-                    />
+                        <CustomButton
+                            onPress={handleRegister}
+                            title="Đăng ký"
+                            style={styles.registerButton}
+                            disabled={isLoading}
+                        />
 
-                    <View style={styles.loginContainer}>
-                        <Text style={styles.loginText}>Đã có tài khoản? </Text>
-                        <Text
-                            style={styles.loginLink}
-                            onPress={() => router.navigate("/(auth)/login")}
-                        >
-                            Đăng nhập
-                        </Text>
+                        <View style={styles.loginContainer}>
+                            <Text style={styles.loginText}>Đã có tài khoản? </Text>
+                            <Text
+                                style={styles.loginLink}
+                                onPress={() => router.navigate("/(auth)/login")}
+                            >
+                                Đăng nhập
+                            </Text>
+                        </View>
+
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.divider} />
+                            <Text style={styles.orText}>hoặc tiếp tục với</Text>
+                            <View style={styles.divider} />
+                        </View>
+
+                        <SocialButtons
+                            onGooglePress={() => { }}
+                            onFacebookPress={() => { }}
+                            onApplePress={() => { }}
+                        />
                     </View>
                 </View>
-            </View>
-        </CloseKeyboard>
+            </CloseKeyboard>
+        </ScrollView>
     );
 };
 
