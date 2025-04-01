@@ -1,6 +1,10 @@
 import axios from '@/src/services/instance_axios';
 import { PaginatedResponse, Response } from '@/src/types/response.type';
 import { Product, ProductQueryParams, ProductDetail } from '@/src/types/product.type';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const VIEWED_PRODUCTS_KEY = 'viewed_products';
+const MAX_VIEWED_PRODUCTS = 20;
 
 export const getProducts = async ({
     search,
@@ -110,4 +114,43 @@ export const getSimilarProducts = (categoryId: number): Promise<PaginatedRespons
 export const getRecommendedProducts = (): Promise<PaginatedResponse<Product>> => {
     const url = `api/v1/products?isBestSeller=true&size=8`
     return axios.get(url);
+};
+
+export const getViewedProducts = async (): Promise<PaginatedResponse<Product>> => {
+    const productIds = await getViewedProductIds();
+    return axios.get(`api/v1/products?filter=id in [${productIds.join(',')}]`);
+};
+
+export const addToViewedProducts = async (productId: number): Promise<void> => {
+    try {
+        const currentViewedProducts = await getViewedProductIds();
+
+        const filteredProducts = currentViewedProducts.filter(id => id !== productId);
+
+        const updatedViewedProducts = [productId, ...filteredProducts];
+
+        const limitedViewedProducts = updatedViewedProducts.slice(0, MAX_VIEWED_PRODUCTS);
+
+        await AsyncStorage.setItem(VIEWED_PRODUCTS_KEY, JSON.stringify(limitedViewedProducts));
+    } catch (error) {
+        console.error('Lỗi khi lưu sản phẩm đã xem:', error);
+    }
+};
+
+export const getViewedProductIds = async (): Promise<number[]> => {
+    try {
+        const viewedProductsJson = await AsyncStorage.getItem(VIEWED_PRODUCTS_KEY);
+        return viewedProductsJson ? JSON.parse(viewedProductsJson) : [];
+    } catch (error) {
+        console.error('Lỗi khi đọc danh sách sản phẩm đã xem:', error);
+        return [];
+    }
+};
+
+export const clearViewedProducts = async (): Promise<void> => {
+    try {
+        await AsyncStorage.removeItem(VIEWED_PRODUCTS_KEY);
+    } catch (error) {
+        console.error('Lỗi khi xóa lịch sử sản phẩm đã xem:', error);
+    }
 };
