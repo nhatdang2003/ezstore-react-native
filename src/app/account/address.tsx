@@ -1,36 +1,53 @@
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator } from "react-native"
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons'
 import { FONT } from "@/src/constants/font"
 import CustomButton from "@/src/components/CustomButton"
-import { useLocalSearchParams, useRouter } from "expo-router"
-
-// Sample address data
-const addresses = [
-    {
-        id: "1",
-        name: "Nguyễn Văn A",
-        phone: "0912345678",
-        address: "123 Đường Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM",
-        isDefault: true,
-    },
-    {
-        id: "2",
-        name: "Nguyễn Văn B",
-        phone: "0987654321",
-        address: "456 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM",
-        isDefault: false,
-    },
-]
+import { useFocusEffect, useRouter } from "expo-router"
+import { useCallback, useEffect, useState } from "react"
+import { getShippingProfiles } from "@/src/services/shipping-profile.service"
+import { ShippingProfile } from "@/src/types/shipping-profile.type"
+import React from "react"
 
 const AddressScreen = () => {
     const router = useRouter()
+    const [addresses, setAddresses] = useState<ShippingProfile[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
+
+    useFocusEffect(
+        useCallback(() => {
+            const fetchAddresses = async () => {
+                try {
+                    setLoading(true)
+                    const response = await getShippingProfiles()
+                    if (response.data) {
+                        setAddresses(response.data)
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch shipping profiles:", err)
+                    setError("Không thể tải danh sách địa chỉ")
+                } finally {
+                    setLoading(false)
+                }
+            }
+
+            fetchAddresses()
+        }, [])
+    )
 
     const handleBack = () => {
         router.back()
     }
 
-    const handleAddAddress = () => {
-        router.push('/account/add_address')
+    const handleAddNewAddress = () => {
+        router.navigate('/account/add_address')
+    }
+
+    const handleEditAddress = (id: string | number) => {
+        router.push({
+            pathname: '/account/edit_address',
+            params: { id }
+        })
     }
 
     return (
@@ -39,39 +56,60 @@ const AddressScreen = () => {
                 <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                     <SimpleLineIcons name="arrow-left" size={20} color="black" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Địa chỉ</Text>
+                <Text style={styles.headerTitle}>Quản lý địa chỉ</Text>
                 <View style={styles.headerRight} />
             </View>
 
             <View style={styles.addressList}>
-                {addresses.map((address) => (
-                    <TouchableOpacity key={address.id} style={styles.addressItem}
-                        onPress={() => router.push({
-                            pathname: '/account/edit_address',
-                            params: { id: address.id }
-                        })}
-                    >
-                        <View style={styles.addressHeader}>
-                            <Text style={styles.addressName}>{address.name}</Text>
-                            {address.isDefault && (
-                                <View style={styles.defaultTag}>
-                                    <Text style={styles.defaultTagText}>Mặc định</Text>
-                                </View>
-                            )}
-                        </View>
-                        <Text style={styles.addressPhone}>{address.phone}</Text>
-                        <Text style={styles.addressText}>{address.address}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#000" />
+                    </View>
+                ) : error ? (
+                    <Text style={styles.errorText}>{error}</Text>
+                ) : (
+                    <React.Fragment>
+                        {addresses.length === 0 ? (
+                            <Text style={styles.noAddressText}>Bạn chưa có địa chỉ nào</Text>
+                        ) : (
+                            addresses.map((address) => (
+                                <TouchableOpacity
+                                    key={address.id}
+                                    style={styles.addressItem}
+                                    onPress={() => handleEditAddress(address.id)}
+                                >
+                                    <View style={{ gap: 2, flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <View style={styles.addressHeader}>
+                                                <Text style={styles.addressName}>{`${address.firstName} ${address.lastName}`}</Text>
+                                                {address.default && (
+                                                    <View style={styles.defaultTag}>
+                                                        <Text style={styles.defaultTagText}>Mặc định</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                        </View>
+                                        <Text style={styles.addressPhone}>{address.phoneNumber}</Text>
+                                        <Text style={styles.addressText}>
+                                            {`${address.address}, ${address.ward}, ${address.district}, ${address.province}`}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))
+                        )}
 
-            <View style={styles.addButtonContainer}>
-                <CustomButton
-                    leftIcon={<SimpleLineIcons name="plus" size={20} color="black" />}
-                    variant="ghost"
-                    title="Thêm địa chỉ mới"
-                    textStyle={styles.addButtonText}
-                    onPress={handleAddAddress} />
+                        <View style={styles.buttonContainer}>
+                            <CustomButton
+                                leftIcon={<SimpleLineIcons name="plus" size={20} color="black" />}
+                                title="Thêm địa chỉ mới"
+                                variant="ghost"
+                                onPress={handleAddNewAddress}
+                                style={styles.addButton}
+                                textStyle={styles.addButtonText}
+                            />
+                        </View>
+                    </React.Fragment>
+                )}
             </View>
         </SafeAreaView>
     )
@@ -103,12 +141,30 @@ const styles = StyleSheet.create({
     },
     addressList: {
         paddingHorizontal: 16,
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    errorText: {
+        textAlign: 'center',
+        marginTop: 20,
+        color: 'red',
+    },
+    noAddressText: {
+        textAlign: 'center',
+        marginTop: 20,
+        color: '#666',
     },
     addressItem: {
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
-        gap: 2
+        gap: 8,
+        flexDirection: 'row',
+        alignItems: 'center'
     },
     addressHeader: {
         flexDirection: "row",
@@ -140,19 +196,21 @@ const styles = StyleSheet.create({
         color: "#3C3C3C",
         lineHeight: 18,
     },
-    addButtonContainer: {
-        paddingHorizontal: 16,
-        alignItems: "center",
-        justifyContent: "center",
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 16,
+        marginBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        paddingBottom: 16
     },
     addButton: {
-        paddingVertical: 16,
-        paddingHorizontal: 16,
+        flex: 1,
     },
     addButtonText: {
-        fontSize: 15,
-        color: "#000",
-    },
+        color: "#000"
+    }
 })
 
 export default AddressScreen
