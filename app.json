@@ -36,6 +36,26 @@
       ],
       [
         "expo-font"
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để tải lên đánh giá sản phẩm.",
+          "cameraPermission": "Ứng dụng cần quyền truy cập camera để chụp ảnh và quay video đánh giá sản phẩm."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ứng dụng cần quyền truy cập camera để chụp ảnh và quay video đánh giá sản phẩm."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để tải lên đánh giá sản phẩm.",
+          "savePhotosPermission": "Ứng dụng cần quyền lưu ảnh/video vào thư viện của bạn."
+        }
       ]
     ],
     "experiments": {

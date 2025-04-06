@@ -228,7 +228,7 @@ const OrderHistoryScreen = () => {
                         <CustomButton
                             variant="outlined"
                             title="Đánh giá"
-                            onPress={() => { }}
+                            onPress={() => { router.push('/account/reviews') }}
                             style={styles.reviewButton}
                             textStyle={styles.reviewButtonText}
                         />
@@ -237,7 +237,7 @@ const OrderHistoryScreen = () => {
                         <CustomButton
                             variant="outlined"
                             title="Xem đánh giá"
-                            onPress={() => { }}
+                            onPress={() => { router.push('/account/list-review') }}
                             style={styles.reviewButton}
                             textStyle={styles.reviewButtonText}
                         />
