@@ -54,6 +54,7 @@ export interface ProductDetail {
     discountRate: number;
     averageRating: number;
     numberOfReviews: number;
+    numberOfSold: number;
     slug: string;
     colorDefault: string | null;
     images: string[];

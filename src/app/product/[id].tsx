@@ -16,7 +16,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
     getProductDetail,
     getSimilarProducts,
-    getRecommendedProducts
+    getRecommendedProducts,
+    addToViewedProducts,
+    getViewedProductIds,
+    getViewedProducts
 } from '@/src/services/product.service';
 import { Product, ProductDetail, ProductVariant } from '@/src/types/product.type';
 import { useCartStore } from '@/src/store/cartStore';
@@ -42,6 +45,7 @@ const ProductDetailScreen = () => {
     const [displayImages, setDisplayImages] = useState<string[]>([]);
     const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
     const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+    const [viewedProducts, setViewedProducts] = useState<Product[]>([]);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -62,6 +66,12 @@ const ProductDetailScreen = () => {
                     const productData = productResponse.data;
                     setProduct(productData);
                     setDisplayImages(productData.images);
+
+                    // Thêm sản phẩm hiện tại vào danh sách đã xem
+                    await addToViewedProducts(Number(id));
+
+                    // Lấy danh sách ID sản phẩm đã xem từ AsyncStorage
+                    const viewedIds = await getViewedProductIds();
 
                     // Lấy sản phẩm tương tự dựa trên danh mục
                     if (productData.categoryId) {
@@ -90,11 +100,35 @@ const ProductDetailScreen = () => {
                         console.log('Không thể lấy sản phẩm đề xuất:', recommendedResponse);
                         setRecommendedProducts([]);
                     }
+
+                    // Lấy danh sách sản phẩm đã xem
+                    const recentlyViewedResponse = await getViewedProducts();
+                    if (recentlyViewedResponse.statusCode === 200 && recentlyViewedResponse.data) {
+                        // Lọc bỏ sản phẩm hiện tại
+                        const productsFromApi = recentlyViewedResponse.data.data.filter(
+                            (p: Product) => p.id !== productData.id
+                        );
+
+                        // Sắp xếp sản phẩm theo thứ tự ID trong AsyncStorage
+                        const sortedViewedProducts = viewedIds
+                            .filter(viewedId => viewedId !== productData.id) // Loại bỏ ID sản phẩm hiện tại
+                            .map(viewedId => {
+                                // Tìm sản phẩm tương ứng với ID từ AsyncStorage
+                                return productsFromApi.find(p => p.id === viewedId);
+                            })
+                            .filter(Boolean); // Lọc bỏ các giá trị undefined
+
+                        setViewedProducts(sortedViewedProducts as Product[]);
+                    } else {
+                        console.log('Không thể lấy sản phẩm đã xem gần đây:', recentlyViewedResponse);
+                        setViewedProducts([]);
+                    }
                 }
             } catch (error) {
                 console.error('Lỗi khi lấy dữ liệu sản phẩm:', error);
                 setSimilarProducts([]);
                 setRecommendedProducts([]);
+                setViewedProducts([]);
             } finally {
                 setLoading(false);
             }
@@ -110,6 +144,7 @@ const ProductDetailScreen = () => {
             setProduct(null);
             setSimilarProducts([]);
             setRecommendedProducts([]);
+            setViewedProducts([]);
             setSelectedColor(null);
             setSelectedSize(null);
             setQuantity(1);
@@ -454,18 +489,23 @@ const ProductDetailScreen = () => {
                     <Text style={styles.productTitle}>{product.name}</Text>
 
                     <View style={styles.priceContainer}>
-                        <Text style={styles.currentPrice}>
-                            {product.minPriceWithDiscount.toLocaleString()}₫
-                            {product.minPriceWithDiscount !== product.maxPriceWithDiscount &&
-                                ` - ${product.maxPriceWithDiscount.toLocaleString()}₫`}
-                        </Text>
-                        {product.discountRate > 0 && (
-                            <Text style={styles.originalPrice}>
-                                {product.minPrice.toLocaleString()}₫
-                                {product.minPrice !== product.maxPrice &&
-                                    ` - ${product.maxPrice.toLocaleString()}₫`}
+                        <View>
+                            <Text style={styles.currentPrice}>
+                                {product.minPriceWithDiscount.toLocaleString()}₫
+                                {product.minPriceWithDiscount !== product.maxPriceWithDiscount &&
+                                    ` - ${product.maxPriceWithDiscount.toLocaleString()}₫`}
                             </Text>
-                        )}
+                            {product.discountRate > 0 && (
+                                <Text style={styles.originalPrice}>
+                                    {product.minPrice.toLocaleString()}₫
+                                    {product.minPrice !== product.maxPrice &&
+                                        ` - ${product.maxPrice.toLocaleString()}₫`}
+                                </Text>
+                            )}
+                        </View>
+                        <Text style={styles.soldCount}>
+                            Đã bán: {product.numberOfSold.toLocaleString()} sản phẩm
+                        </Text>
                     </View>
 
                     <View style={styles.ratingContainer}>
@@ -619,6 +659,20 @@ const ProductDetailScreen = () => {
                                 style={styles.recommendedProductsScroll}
                             >
                                 {recommendedProducts.map(renderProductItem)}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    {/* Recently viewed products */}
+                    {viewedProducts.length > 0 && (
+                        <View style={styles.viewedProductsSection}>
+                            <Text style={styles.viewedProductsTitle}>Sản phẩm đã xem</Text>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.viewedProductsScroll}
+                            >
+                                {viewedProducts.map(renderProductItem)}
                             </ScrollView>
                         </View>
                     )}
@@ -793,6 +847,9 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     priceContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 8,
     },
     currentPrice: {
@@ -963,6 +1020,17 @@ const styles = StyleSheet.create({
     recommendedProductsScroll: {
         marginBottom: 16,
     },
+    viewedProductsSection: {
+        marginTop: 16,
+    },
+    viewedProductsTitle: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 12,
+    },
+    viewedProductsScroll: {
+        marginBottom: 16,
+    },
     productItem: {
         width: 150,
         marginRight: 12,
@@ -1018,6 +1086,11 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         includeFontPadding: false,
         lineHeight: 12,
+    },
+    soldCount: {
+        fontSize: 14,
+        color: '#666',
+        marginLeft: 10,
     },
 });
 
