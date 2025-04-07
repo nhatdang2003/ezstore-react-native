@@ -1,11 +1,85 @@
-import { useState } from "react"
-import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView } from "react-native"
-import { Ionicons, SimpleLineIcons } from "@expo/vector-icons"
-import { FONT } from "@/src/constants/font"
-import { router } from "expo-router"
-import { COLOR } from "@/src/constants/color"
+import { useState, useEffect } from "react";
+import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, ScrollView } from "react-native";
+import { Ionicons, SimpleLineIcons } from "@expo/vector-icons";
+import { FONT } from "@/src/constants/font";
+import { router, useLocalSearchParams } from "expo-router";
+import { COLOR } from "@/src/constants/color";
+import { getOrderReviews } from "@/src/services/order.service";
+import { OrderReviewResponse } from "@/src/types/review.type";
+import { formatDateString } from "@/src/utils/date";
 
 export default function ReviewScreen() {
+    const { orderId } = useLocalSearchParams();
+    const [reviews, setReviews] = useState<OrderReviewResponse[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchReviews = async () => {
+            if (!orderId) {
+                setError("Không tìm thấy thông tin đơn hàng");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await getOrderReviews(Number(orderId));
+                setReviews(response.data);
+            } catch (err) {
+                console.error("Error fetching reviews:", err);
+                setError("Có lỗi khi tải đánh giá");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchReviews();
+    }, [orderId]);
+
+    const renderStars = (rating: number) => {
+        return [...Array(5)].map((_, index) => (
+            <Ionicons
+                key={index}
+                name="star"
+                size={16}
+                color={index < rating ? "#FFD700" : "#DDDDDD"}
+            />
+        ));
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.headerTab}>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <SimpleLineIcons name="arrow-left" size={20} color="black" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Đánh giá đơn hàng</Text>
+                    <View />
+                </View>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={COLOR.PRIMARY} />
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (error) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.headerTab}>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <SimpleLineIcons name="arrow-left" size={20} color="black" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Đánh giá đơn hàng</Text>
+                    <View />
+                </View>
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -18,80 +92,67 @@ export default function ReviewScreen() {
             </View>
 
             <ScrollView style={styles.content}>
-                <View style={styles.reviewContainer}>
-                    <View style={styles.reviewHeader}>
-                        <View style={styles.userInfo}>
-                            <Image source={{ uri: "/placeholder.svg?height=40&width=40" }} style={styles.avatar} />
-                            <View>
-                                <Text style={styles.username}>phuquypro.2003</Text>
-                                <View style={styles.ratingContainer}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Ionicons key={star} name="star" size={16} color="#FFD700" />
-                                    ))}
+                {reviews.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Không có đánh giá nào cho đơn hàng này</Text>
+                    </View>
+                ) : (
+                    reviews.map((review, index) => (
+                        <View key={index} style={styles.reviewContainer}>
+                            <View style={styles.reviewHeader}>
+                                <View style={styles.userInfo}>
+                                    <Image
+                                        source={{ uri: review.avatar || "/placeholder.svg?height=40&width=40" }}
+                                        style={styles.avatar}
+                                    />
+                                    <View>
+                                        <Text style={styles.username}>
+                                            {review.firstName} {review.lastName}
+                                        </Text>
+                                        <View style={styles.ratingContainer}>
+                                            {renderStars(review.rating)}
+                                        </View>
+                                        <View>
+                                            <Text numberOfLines={4} style={styles.reviewText}>
+                                                {review.description}
+                                            </Text>
+                                        </View>
+                                    </View>
                                 </View>
-                                <View>
-                                    <Text>
-                                        Great Great Great Great Great Great
-                                        Great Great Great Great Great Great
-                                        Great Great Great Great Great Great
-                                        Great Great Great Great Great Great
+                                <TouchableOpacity style={styles.editButton}>
+                                    <Text style={styles.editButtonText}
+                                        onPress={() => {
+                                            router.replace(`/account/reviews?orderId=${orderId}&lineItemId=${review.lineItemId}&mode=edit`)
+                                        }}>Sửa</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.date}>
+                                {review.createdAt ? formatDateString(review.createdAt) : ''}
+                            </Text>
+
+                            <View style={styles.productContainer}>
+                                <Image
+                                    source={{ uri: review.variantImage || "/placeholder.svg?height=80&width=80" }}
+                                    style={styles.productImage}
+                                />
+                                <View style={styles.productInfo}>
+                                    <Text style={styles.productName} numberOfLines={2}>
+                                        {review.productName}
                                     </Text>
+                                    {(review.color || review.size) && (
+                                        <Text style={styles.productVariant}>
+                                            {review.color} {review.size}
+                                        </Text>
+                                    )}
                                 </View>
                             </View>
                         </View>
-                        <TouchableOpacity style={styles.editButton}>
-                            <Text style={styles.editButtonText}>Sửa</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.date}>30-03-2025 17:27</Text>
-
-                    <View style={styles.productContainer}>
-                        <Image source={{ uri: "/placeholder.svg?height=80&width=80" }} style={styles.productImage} />
-                        <Text style={styles.productName} numberOfLines={2}>
-                            Bộ sạc Baseus cổng loại C/PD 20W hỗ trợ sạc nhanh
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={styles.reviewContainer}>
-                    <View style={styles.reviewHeader}>
-                        <View style={styles.userInfo}>
-                            <Image source={{ uri: "/placeholder.svg?height=40&width=40" }} style={styles.avatar} />
-                            <View>
-                                <Text style={styles.username}>phuquypro.2003</Text>
-                                <View style={styles.ratingContainer}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <Ionicons key={star} name="star" size={16} color="#FFD700" />
-                                    ))}
-                                </View>
-                                <View>
-                                    <Text>
-                                        Great Great Great Great Great Great
-                                        Great Great Great Great Great Great
-                                        Great Great Great Great Great Great
-                                        Great Great Great Great Great Great
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                        <TouchableOpacity style={styles.editButton}>
-                            <Text style={styles.editButtonText}>Sửa</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.date}>30-03-2025 17:27</Text>
-
-                    <View style={styles.productContainer}>
-                        <Image source={{ uri: "/placeholder.svg?height=80&width=80" }} style={styles.productImage} />
-                        <Text style={styles.productName} numberOfLines={2}>
-                            Bộ sạc Baseus cổng loại C/PD 20W hỗ trợ sạc nhanh
-                        </Text>
-                    </View>
-                </View>
+                    ))
+                )}
             </ScrollView>
         </SafeAreaView>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
@@ -134,7 +195,7 @@ const styles = StyleSheet.create({
     userInfo: {
         flex: 1,
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: "flex-start",
     },
     avatar: {
         width: 40,
@@ -164,6 +225,10 @@ const styles = StyleSheet.create({
         color: "#888",
         fontSize: 14,
         marginBottom: 16,
+    },
+    reviewText: {
+        color: "#333",
+        lineHeight: 20,
     },
     responseContainer: {
         backgroundColor: "#F8F8F8",
@@ -197,6 +262,41 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 15,
         fontWeight: "500",
+        marginBottom: 4,
+    },
+    productVariant: {
+        fontSize: 14,
+        color: "#666",
+    },
+    productInfo: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        color: 'red',
+        fontSize: 16,
+        textAlign: 'center',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
     },
 })
 

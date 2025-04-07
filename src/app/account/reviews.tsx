@@ -10,131 +10,343 @@ import {
     ScrollView,
     StatusBar,
     Alert,
+    ActivityIndicator,
 } from "react-native"
 import { Ionicons, FontAwesome, SimpleLineIcons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { FONT } from "@/src/constants/font"
 import { COLOR } from "@/src/constants/color"
-import * as ImagePicker from 'expo-image-picker'
-import { Video, ResizeMode } from 'expo-av'
+import { getOrderReviews, createOrderReview, updateOrderReview } from "@/src/services/order.service"
+import { OrderReviewRequest, OrderReviewResponse } from "@/src/types/review.type"
+import AlertDialog from "@/src/components/AlertModal"
 
 export default function ProductReviewScreen() {
     const router = useRouter()
     const params = useLocalSearchParams()
-    const [rating, setRating] = useState(5)
-    const [sellerRating, setSellerRating] = useState(5)
-    const [deliveryRating, setDeliveryRating] = useState(5)
-    const [shippingRating, setShippingRating] = useState(5)
-    const [reviewText, setReviewText] = useState("")
-    const [isAnonymous, setIsAnonymous] = useState(false)
     const [mediaFiles, setMediaFiles] = useState<Array<{
         type: 'image' | 'video',
         uri: string
     }>>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [orderReviews, setOrderReviews] = useState<OrderReviewResponse[]>([])
+    const [showValidation, setShowValidation] = useState(false)
+    const [alertVisible, setAlertVisible] = useState(false)
+    const [alertMessage, setAlertMessage] = useState("")
+
+    // Store form data for each review item
+    const [reviewsData, setReviewsData] = useState<{
+        [key: number]: {
+            rating: number;
+            description: string;
+        }
+    }>({})
+
+    const orderId = params.orderId ? Number(params.orderId) : 0
+    const lineItemId = params.lineItemId ? Number(params.lineItemId) : undefined
+    const mode = params.mode as string | undefined
+
+    const isEditMode = mode === 'edit' && lineItemId !== undefined
 
     const getImagesCount = () => mediaFiles.filter(file => file.type === 'image').length
     const getVideoCount = () => mediaFiles.filter(file => file.type === 'video').length
 
-    useEffect(() => {
-        if (params.selectedMedia) {
-            try {
-                const selectedMediaFromCamera = JSON.parse(params.selectedMedia as string) as Array<{
-                    type: 'image' | 'video',
-                    uri: string
-                }>;
+    // Function to check if all reviews have valid data
+    const areAllReviewsValid = () => {
+        if (orderReviews.length === 0) return false;
 
-                setMediaFiles(prev => {
-                    const newMedia = selectedMediaFromCamera.filter(
-                        (newItem: { uri: string }) => !prev.some(existingItem => existingItem.uri === newItem.uri)
-                    )
-
-                    const currentImages = prev.filter(item => item.type === 'image')
-                    const currentVideos = prev.filter(item => item.type === 'video')
-
-                    const newImages = newMedia.filter((item: { type: string }) => item.type === 'image')
-                    const newVideos = newMedia.filter((item: { type: string }) => item.type === 'video')
-
-                    const updatedImages = [...currentImages, ...newImages].slice(0, 5)
-                    const updatedVideos = [...currentVideos, ...newVideos].slice(0, 1)
-
-                    return [...updatedImages, ...updatedVideos]
-                })
-            } catch (error) {
-                console.error('Failed to parse selected media', error)
-            }
+        if (isEditMode && lineItemId !== undefined) {
+            const review = reviewsData[lineItemId];
+            return review && review.rating > 0 && review.description && review.description.trim().length >= 10;
+        } else {
+            // Check all items in create mode
+            return orderReviews.every(review => {
+                const data = reviewsData[review.lineItemId];
+                return data && data.rating > 0 && data.description && data.description.trim().length >= 10;
+            });
         }
-    }, [params.selectedMedia])
+    }
 
-    const pickImages = async () => {
-        if (getImagesCount() >= 5) {
-            Alert.alert("Thông báo", "Bạn chỉ có thể thêm tối đa 5 ảnh")
-            return
+    // Check if a specific review is valid
+    const isReviewValid = (lineItemId: number) => {
+        const review = reviewsData[lineItemId];
+        return review && review.rating > 0 && review.description && review.description.trim().length >= 10;
+    }
+
+    // Get validation message for a specific review
+    const getValidationMessage = (lineItemId: number) => {
+        const review = reviewsData[lineItemId];
+        if (!review || !review.rating) return "* Vui lòng chọn số sao đánh giá";
+        if (!review.description || review.description.trim().length < 10) {
+            return `* Vui lòng viết nhận xét ít nhất 10 ký tự`;
+        }
+        return "";
+    }
+
+    useEffect(() => {
+        if (orderId) {
+            fetchOrderReviews(orderId)
+        }
+    }, [orderId])
+
+    const fetchOrderReviews = async (id: number) => {
+        try {
+            setIsLoading(true)
+            const response = await getOrderReviews(id)
+            setOrderReviews(response.data)
+
+            const initialReviewsData: { [key: number]: { rating: number; description: string } } = {};
+
+            if (response.data && response.data.length > 0) {
+                response.data.forEach(review => {
+                    initialReviewsData[review.lineItemId] = {
+                        rating: review.rating || 5,
+                        description: review.description || ""
+                    };
+                });
+
+                if (isEditMode && lineItemId) {
+                    const reviewToEdit = response.data.find(review => review.lineItemId === lineItemId)
+                    if (!reviewToEdit) {
+                        Alert.alert("Lỗi", "Không tìm thấy thông tin sản phẩm cần sửa đánh giá")
+                        router.back()
+                    }
+                }
+            }
+
+            setReviewsData(initialReviewsData);
+        } catch (error) {
+            console.error("Failed to fetch order reviews:", error)
+            Alert.alert("Lỗi", "Không thể lấy dữ liệu đánh giá. Vui lòng thử lại sau")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const handleRatingChange = (lineItemId: number, rating: number) => {
+        setReviewsData(prev => ({
+            ...prev,
+            [lineItemId]: {
+                ...prev[lineItemId],
+                rating
+            }
+        }));
+    }
+
+    const handleDescriptionChange = (lineItemId: number, description: string) => {
+        setReviewsData(prev => ({
+            ...prev,
+            [lineItemId]: {
+                ...prev[lineItemId],
+                description
+            }
+        }));
+    }
+
+    const handleSubmitReview = async () => {
+        setShowValidation(true);
+
+        if (!areAllReviewsValid()) {
+            setAlertMessage("Vui lòng điền đầy đủ thông tin đánh giá cho tất cả sản phẩm")
+            setAlertVisible(true)
+            return;
         }
 
         try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 1,
-                allowsMultipleSelection: true,
-                selectionLimit: 5 - getImagesCount(),
-            })
+            setIsSubmitting(true);
 
-            if (!result.canceled) {
-                const newImages = result.assets.map(asset => ({
-                    type: 'image' as const,
-                    uri: asset.uri
-                }))
+            if (isEditMode && lineItemId) {
+                // Update existing review
+                const reviewData = reviewsData[lineItemId];
 
-                const totalImages = getImagesCount() + newImages.length
-                if (totalImages > 5) {
-                    Alert.alert("Thông báo", "Bạn chỉ có thể thêm tối đa 5 ảnh")
-                    return
+                if (!reviewData) {
+                    throw new Error("Không tìm thấy dữ liệu đánh giá");
                 }
 
-                setMediaFiles(prev => [...prev, ...newImages])
+                const updateData: OrderReviewRequest = {
+                    orderId,
+                    reviewItem: {
+                        lineItemId,
+                        rating: reviewData.rating,
+                        description: reviewData.description
+                    }
+                };
+
+                await updateOrderReview(updateData);
+
+                // Navigate back
+                router.replace(`/account/list-review?orderId=${orderId}`);
+            } else {
+                // Create new review for each product
+                const createPromises = Object.entries(reviewsData).map(([lineItemIdStr, reviewData]) => {
+                    const createData: OrderReviewRequest = {
+                        orderId,
+                        reviewItem: {
+                            lineItemId: parseInt(lineItemIdStr),
+                            rating: reviewData.rating,
+                            description: reviewData.description
+                        }
+                    };
+
+                    return createOrderReview(createData);
+                });
+
+                await Promise.all(createPromises);
+
+                // Navigate back
+                router.replace(`/account/list-review?orderId=${orderId}`);
             }
         } catch (error) {
-            Alert.alert("Lỗi", "Không thể thêm ảnh. Vui lòng thử lại")
+            console.error("Failed to submit review:", error);
+            setAlertMessage("Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại sau.");
+            setAlertVisible(true);
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
-    const pickVideo = async () => {
-        if (getVideoCount() >= 1) {
-            Alert.alert("Thông báo", "Bạn chỉ có thể thêm 1 video")
-            return
-        }
-
-        try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-                allowsEditing: true,
-                aspect: [16, 9],
-                quality: 1,
-                videoMaxDuration: 60,
-            })
-
-            if (!result.canceled) {
-                setMediaFiles(prev => [...prev, { type: 'video', uri: result.assets[0].uri }])
-            }
-        } catch (error) {
-            Alert.alert("Lỗi", "Không thể thêm video. Vui lòng thử lại")
-        }
+    // Calculate character count for a specific review
+    const getCharacterCount = (lineItemId: number) => {
+        return reviewsData[lineItemId]?.description?.length || 0;
     }
 
-    const removeMedia = (index: number) => {
-        setMediaFiles(prev => prev.filter((_, i) => i !== index))
-    }
+    // Keep existing useEffect, pickImages, pickVideo, removeMedia functions...
+    // ...existing code...
 
     const renderStars = (count: number, activeCount: number, onPress: (rating: number) => void) => {
         return Array(count)
             .fill(0)
             .map((_, i) => (
                 <TouchableOpacity key={i} onPress={() => onPress(i + 1)}>
-                    <FontAwesome name="star" size={24} color={i < activeCount ? "#FFB800" : "#E0E0E0"} style={styles.star} />
+                    <FontAwesome
+                        name="star"
+                        size={24}
+                        color={i < activeCount ? "#FFB800" : "#E0E0E0"}
+                        style={styles.star}
+                    />
                 </TouchableOpacity>
             ))
+    }
+
+    // Render a single review item
+    const renderReviewItem = (review: OrderReviewResponse) => {
+        const reviewData = reviewsData[review.lineItemId] || { rating: 5, description: "" };
+
+        return (
+            <View key={review.lineItemId} style={styles.productCard}>
+                <View style={styles.productInfo}>
+                    <Image
+                        source={{ uri: review.variantImage || "https://via.placeholder.com/60" }}
+                        style={styles.productImage}
+                    />
+                    <View style={styles.productDetails}>
+                        <Text style={styles.productName}>{review.productName}</Text>
+                        <Text style={styles.productVariant}>
+                            {review.color} {review.size ? `- ${review.size}` : ''}
+                        </Text>
+                    </View>
+                </View>
+
+                <View style={styles.ratingSection}>
+                    <Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
+                    <View style={styles.starsContainer}>
+                        {renderStars(5, reviewData.rating, (rating) => handleRatingChange(review.lineItemId, rating))}
+                    </View>
+                </View>
+
+                {/* Photo/Video Upload */}
+                {/* <View style={styles.uploadSection}>
+                    <Text style={styles.uploadTitle}>
+                        Thêm ít nhất 1 hình ảnh/video về sản phẩm
+                        <Text style={styles.bonusText}>
+                            {" "}
+                            +200 <FontAwesome name="circle" size={14} color="#FFB800" />
+                        </Text>
+                    </Text>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
+                        {mediaFiles.map((file, index) => (
+                            <View key={index} style={styles.mediaPreviewContainer}>
+                                {file.type === 'image' ? (
+                                    <Image source={{ uri: file.uri }} style={styles.mediaPreview} />
+                                ) : (
+                                    <Video
+                                        source={{ uri: file.uri }}
+                                        style={styles.mediaPreview}
+                                        resizeMode={ResizeMode.COVER}
+                                    />
+                                )}
+                                <TouchableOpacity
+                                    style={styles.removeMediaButton}
+                                    onPress={() => removeMedia(index)}
+                                >
+                                    <Ionicons name="close-circle" size={24} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </ScrollView>
+
+                    <View style={styles.uploadOptions}>
+                        <TouchableOpacity
+                            style={[
+                                styles.uploadOption,
+                                getImagesCount() >= 5 && styles.uploadOptionDisabled
+                            ]}
+                            onPress={pickImages}
+                            disabled={getImagesCount() >= 5}
+                        >
+                            <View style={styles.uploadIconContainer}>
+                                <Ionicons name="images-outline" size={28} color={getImagesCount() >= 5 ? "#ccc" : "#555"} />
+                            </View>
+                            <Text style={[styles.uploadOptionText, getImagesCount() >= 5 && styles.uploadOptionTextDisabled]}>
+                                Hình ảnh ({getImagesCount()}/5)
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[
+                                styles.uploadOption,
+                                getVideoCount() >= 1 && styles.uploadOptionDisabled
+                            ]}
+                            onPress={pickVideo}
+                            disabled={getVideoCount() >= 1}
+                        >
+                            <View style={styles.uploadIconContainer}>
+                                <Ionicons name="videocam-outline" size={28} color={getVideoCount() >= 1 ? "#ccc" : "#555"} />
+                            </View>
+                            <Text style={[styles.uploadOptionText, getVideoCount() >= 1 && styles.uploadOptionTextDisabled]}>
+                                Video ({getVideoCount()}/1)
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View> */}
+
+                <View style={styles.reviewTextSection}>
+                    <Text style={styles.reviewTextTitle}>
+                        Viết đánh giá từ 10 ký tự
+                    </Text>
+                    <View style={styles.textInputContainer}>
+                        <TextInput
+                            style={styles.textInput}
+                            multiline
+                            placeholder="Hãy chia sẻ nhận xét cho sản phẩm này bạn nhé!"
+                            placeholderTextColor="#CCCCCC"
+                            value={reviewData.description}
+                            onChangeText={(text) => handleDescriptionChange(review.lineItemId, text)}
+                        />
+                        <Text style={styles.characterCount}>
+                            {getCharacterCount(review.lineItemId)} ký tự
+                        </Text>
+                    </View>
+                </View>
+
+                {showValidation && !isReviewValid(review.lineItemId) && (
+                    <Text style={styles.validationMessage}>
+                        {getValidationMessage(review.lineItemId)}
+                    </Text>
+                )}
+            </View>
+        );
     }
 
     return (
@@ -145,113 +357,62 @@ export default function ProductReviewScreen() {
                 <TouchableOpacity onPress={() => router.back()}>
                     <SimpleLineIcons name="arrow-left" size={20} color="black" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Đánh giá đơn hàng</Text>
+                <Text style={styles.headerTitle}>
+                    {isEditMode ? "Sửa đánh giá" : "Đánh giá đơn hàng"}
+                </Text>
                 <View />
             </View>
 
-            <ScrollView style={styles.scrollView}>
-
-                <View style={styles.productCard}>
-                    <View style={styles.productInfo}>
-                        <Image source={{ uri: "https://v0.dev/placeholder.svg?height=80&width=80" }} style={styles.productImage} />
-                        <View style={styles.productDetails}>
-                            <Text style={styles.productName}>Cáp Sạc Nhanh Baseus Cổng USB C Sang 20W Ch...</Text>
-                            <Text style={styles.productVariant}>1M Black</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.ratingSection}>
-                        <Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
-                        <View style={styles.starsContainer}>{renderStars(5, rating, setRating)}</View>
-                    </View>
-
-                    {/* Photo/Video Upload */}
-                    {/* <View style={styles.uploadSection}>
-                        <Text style={styles.uploadTitle}>
-                            Thêm ít nhất 1 hình ảnh/video về sản phẩm
-                            <Text style={styles.bonusText}>
-                                {" "}
-                                +200 <FontAwesome name="circle" size={14} color="#FFB800" />
-                            </Text>
-                        </Text>
-
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                            {mediaFiles.map((file, index) => (
-                                <View key={index} style={styles.mediaPreviewContainer}>
-                                    {file.type === 'image' ? (
-                                        <Image source={{ uri: file.uri }} style={styles.mediaPreview} />
-                                    ) : (
-                                        <Video
-                                            source={{ uri: file.uri }}
-                                            style={styles.mediaPreview}
-                                            resizeMode={ResizeMode.COVER}
-                                        />
-                                    )}
-                                    <TouchableOpacity
-                                        style={styles.removeMediaButton}
-                                        onPress={() => removeMedia(index)}
-                                    >
-                                        <Ionicons name="close-circle" size={24} color="white" />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                        </ScrollView>
-
-                        <View style={styles.uploadOptions}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.uploadOption,
-                                    getImagesCount() >= 5 && styles.uploadOptionDisabled
-                                ]}
-                                onPress={pickImages}
-                                disabled={getImagesCount() >= 5}
-                            >
-                                <View style={styles.uploadIconContainer}>
-                                    <Ionicons name="images-outline" size={28} color={getImagesCount() >= 5 ? "#ccc" : "#555"} />
-                                </View>
-                                <Text style={[styles.uploadOptionText, getImagesCount() >= 5 && styles.uploadOptionTextDisabled]}>
-                                    Hình ảnh ({getImagesCount()}/5)
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[
-                                    styles.uploadOption,
-                                    getVideoCount() >= 1 && styles.uploadOptionDisabled
-                                ]}
-                                onPress={pickVideo}
-                                disabled={getVideoCount() >= 1}
-                            >
-                                <View style={styles.uploadIconContainer}>
-                                    <Ionicons name="videocam-outline" size={28} color={getVideoCount() >= 1 ? "#ccc" : "#555"} />
-                                </View>
-                                <Text style={[styles.uploadOptionText, getVideoCount() >= 1 && styles.uploadOptionTextDisabled]}>
-                                    Video ({getVideoCount()}/1)
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View> */}
-
-                    <View style={styles.reviewTextSection}>
-                        <Text style={styles.reviewTextTitle}>Viết đánh giá từ 50 ký tự</Text>
-                        <View style={styles.textInputContainer}>
-                            <TextInput
-                                style={styles.textInput}
-                                multiline
-                                placeholder="Hãy chia sẻ nhận xét cho sản phẩm này bạn nhé!"
-                                placeholderTextColor="#CCCCCC"
-                                value={reviewText}
-                                onChangeText={setReviewText}
-                            />
-                            <Text style={styles.characterCount}>0 ký tự</Text>
-                        </View>
-                    </View>
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={COLOR.PRIMARY} />
+                    <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
                 </View>
-            </ScrollView>
+            ) : orderReviews.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>Không có sản phẩm nào để đánh giá</Text>
+                </View>
+            ) : (
+                <>
+                    <ScrollView style={styles.scrollView}>
+                        {isEditMode && lineItemId
+                            ? orderReviews
+                                .filter(review => review.lineItemId === lineItemId)
+                                .map(renderReviewItem)
+                            : orderReviews.map(renderReviewItem)
+                        }
+                        <View style={styles.bottomPadding} />
+                    </ScrollView>
 
-            <TouchableOpacity style={styles.submitButton}>
-                <Text style={styles.submitButtonText}>Gửi</Text>
-            </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.submitButton,
+                            isSubmitting && styles.disabledSubmitButton
+                        ]}
+                        onPress={handleSubmitReview}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <ActivityIndicator size="small" color="white" />
+                        ) : (
+                            <Text style={styles.submitButtonText}>
+                                {isEditMode ? "Cập nhật" : "Gửi"}
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+                </>
+            )}
+
+            <AlertDialog
+                visible={alertVisible}
+                message={alertMessage}
+                onClose={() => {
+                    setAlertVisible(false);
+                    if (alertMessage.includes("thành công")) {
+                        router.replace(`/account/list-review?orderId=${orderId}`);
+                    }
+                }}
+            />
         </SafeAreaView>
     )
 }
@@ -278,6 +439,36 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: "#555",
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 16,
+        color: "#555",
+    },
+    productCounter: {
+        backgroundColor: 'white',
+        padding: 10,
+        alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+    },
+    counterText: {
+        fontSize: 14,
+        color: '#555',
     },
     highlightedText: {
         color: "#FF8C00",
@@ -329,6 +520,64 @@ const styles = StyleSheet.create({
     star: {
         marginRight: 8,
     },
+    reviewTextSection: {
+        paddingVertical: 16,
+        borderTopWidth: 1,
+        borderTopColor: "#EEEEEE",
+    },
+    reviewTextTitle: {
+        fontSize: 14,
+        color: "#333333",
+        marginBottom: 12,
+    },
+    textInputContainer: {
+        borderWidth: 1,
+        borderColor: "#DDDDDD",
+        borderRadius: 4,
+        padding: 12,
+    },
+    textInput: {
+        minHeight: 80,
+        fontSize: 14,
+        color: "#333333",
+        textAlignVertical: "top",
+    },
+    characterCount: {
+        fontSize: 12,
+        color: "#999999",
+        textAlign: "right",
+        marginTop: 8,
+    },
+    requiredText: {
+        color: "red",
+        fontSize: 12,
+    },
+    validationMessage: {
+        color: "red",
+        fontSize: 12,
+        marginTop: 5,
+        marginBottom: 5,
+    },
+    bottomPadding: {
+        height: 20,
+    },
+    disabledSubmitButton: {
+        backgroundColor: "#CCCCCC",
+    },
+    submitButton: {
+        margin: 8,
+        borderRadius: 8,
+        backgroundColor: COLOR.PRIMARY,
+        padding: 16,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    submitButtonText: {
+        color: "white",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    // Preserving the styles from original file for commented sections
     uploadSection: {
         paddingVertical: 16,
         borderTopWidth: 1,
@@ -365,38 +614,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#555555",
     },
-    reviewTextSection: {
-        paddingVertical: 16,
-        borderTopWidth: 1,
-        borderTopColor: "#EEEEEE",
-    },
-    reviewTextTitle: {
-        fontSize: 14,
-        color: "#333333",
-        marginBottom: 12,
-    },
-    textInputContainer: {
-        borderWidth: 1,
-        borderColor: "#DDDDDD",
-        borderRadius: 4,
-        padding: 12,
-    },
     textInputLabel: {
         fontSize: 14,
         color: "#333333",
         marginBottom: 8,
-    },
-    textInput: {
-        minHeight: 80,
-        fontSize: 14,
-        color: "#333333",
-        textAlignVertical: "top",
-    },
-    characterCount: {
-        fontSize: 12,
-        color: "#999999",
-        textAlign: "right",
-        marginTop: 8,
     },
     anonymousSection: {
         flexDirection: "row",
@@ -455,19 +676,6 @@ const styles = StyleSheet.create({
     courierName: {
         fontSize: 14,
         color: "#555555",
-    },
-    submitButton: {
-        margin: 8,
-        borderRadius: 8,
-        backgroundColor: COLOR.PRIMARY,
-        padding: 16,
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    submitButtonText: {
-        color: "white",
-        fontSize: 16,
-        fontWeight: "600",
     },
     mediaPreviewScroll: {
         paddingVertical: 8,
