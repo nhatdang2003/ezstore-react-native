@@ -75,6 +75,7 @@ export default function RootLayout() {
                 <Stack.Screen name="account/details" options={{ headerShown: false }} />
                 <Stack.Screen name="account/verify_update" options={{ headerShown: false }} />
                 <Stack.Screen name="account/orders" options={{ headerShown: false }} />
+                <Stack.Screen name="account/order_details" options={{ headerShown: false }} />
                 <Stack.Screen name="account/add_address" options={{ headerShown: false }} />
                 <Stack.Screen name="account/edit_address" options={{ headerShown: false }} />
                 <Stack.Screen name="+not-found" options={{ headerShown: true }} />
