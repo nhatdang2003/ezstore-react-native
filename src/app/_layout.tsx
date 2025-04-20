@@ -43,7 +43,8 @@ export default function RootLayout() {
         if (
             segments[segments.length - 1] !== "filter" &&
             segments[segments.length - 1] !== "store" &&
-            segments[segments.length - 1] !== "[id]"
+            segments[segments.length - 1] !== "[id]" &&
+            segments[segments.length - 1] !== "result"
         ) {
             resetFilters();
         }

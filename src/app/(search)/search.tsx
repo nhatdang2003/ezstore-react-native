@@ -220,6 +220,7 @@ const SearchScreen = () => {
                 </TouchableOpacity>
                 <View style={styles.inputContainer}>
                     <TextInput
+                        autoFocus
                         placeholder="Tìm kiếm"
                         style={styles.input}
                         value={searchText}
