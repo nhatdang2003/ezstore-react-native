@@ -81,6 +81,8 @@ export default function RootLayout() {
                 <Stack.Screen name="account/edit_address" options={{ headerShown: false }} />
                 <Stack.Screen name="account/reviews" options={{ headerShown: false }} />
                 <Stack.Screen name="account/list-review" options={{ headerShown: false }} />
+                {/* <Stack.Screen name="account/notifications" options={{ headerShown: false }} /> */}
+                <Stack.Screen name="account/order_statistics" options={{ headerShown: false }} />
                 <Stack.Screen name="+not-found" options={{ headerShown: true }} />
                 <Stack.Screen name="(search)/search" options={{ headerShown: false }} />
                 <Stack.Screen name="(search)/result" options={{ headerShown: false }} />
