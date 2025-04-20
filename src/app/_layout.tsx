@@ -43,7 +43,8 @@ export default function RootLayout() {
         if (
             segments[segments.length - 1] !== "filter" &&
             segments[segments.length - 1] !== "store" &&
-            segments[segments.length - 1] !== "[id]"
+            segments[segments.length - 1] !== "[id]" &&
+            segments[segments.length - 1] !== "result"
         ) {
             resetFilters();
         }
@@ -78,6 +79,8 @@ export default function RootLayout() {
                 <Stack.Screen name="account/order_details" options={{ headerShown: false }} />
                 <Stack.Screen name="account/add_address" options={{ headerShown: false }} />
                 <Stack.Screen name="account/edit_address" options={{ headerShown: false }} />
+                <Stack.Screen name="account/reviews" options={{ headerShown: false }} />
+                <Stack.Screen name="account/list-review" options={{ headerShown: false }} />
                 <Stack.Screen name="+not-found" options={{ headerShown: true }} />
                 <Stack.Screen name="(search)/search" options={{ headerShown: false }} />
                 <Stack.Screen name="(search)/result" options={{ headerShown: false }} />

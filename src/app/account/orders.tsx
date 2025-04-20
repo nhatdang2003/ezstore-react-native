@@ -20,6 +20,7 @@ import { formatPrice } from "@/src/utils/product";
 import CustomButton from "@/src/components/CustomButton";
 import { OrderHistory } from "@/src/types/order.type";
 import { getOrderHistoryUser } from "@/src/services/order.service";
+import { useFocusEffect } from "expo-router";
 
 const OrderHistoryScreen = () => {
   const [activeTab, setActiveTab] = useState<string>(STATUS_ORDER[0].value);
@@ -68,28 +69,29 @@ const OrderHistoryScreen = () => {
     {}
   );
 
-  // Cải thiện hàm fetchData để xử lý trùng lặp
-  const fetchData = useCallback(async () => {
-    const status = activeTab;
-    const currentPage = page[status];
+    // Cải thiện hàm fetchData để xử lý trùng lặp
+    const fetchData = useCallback(async (isRefreshing = false) => {
+        const status = activeTab;
+        const currentPage = isRefreshing ? 0 : page[status];
 
-    // Kiểm tra hasMore trước khi thực hiện bất kỳ hành động nào
-    if (!hasMore[status]) {
-      return;
-    }
+        // Skip if we're fetching more items but there are no more
+        if (!isRefreshing && !hasMore[status]) {
+            return;
+        }
 
-    // Nếu đang có request xử lý cho tab này, bỏ qua
-    if (pendingRequests.current[status]) {
-      return;
-    }
+        // If already processing a request for this tab, skip
+        if (pendingRequests.current[status]) {
+            return;
+        }
 
-    if (loading || loadingMore) {
-      return;
-    }
+        // If loading or loadingMore and not refreshing, skip
+        if ((loading || loadingMore) && !isRefreshing) {
+            return;
+        }
 
-    // Đánh dấu request đang xử lý
-    pendingRequests.current[status] = true;
-    setLoadingMore(true);
+        // Mark as pending
+        pendingRequests.current[status] = true;
+        isRefreshing ? setLoading(true) : setLoadingMore(true);
 
     try {
       const response = await getOrderHistoryUser({
@@ -105,33 +107,38 @@ const OrderHistoryScreen = () => {
       setPage((prev) => ({ ...prev, [status]: responsePage + 1 }));
       setHasMore((prev) => ({ ...prev, [status]: moreDataAvailable }));
 
-      // Xử lý trùng lặp: Tạo một map để lưu tất cả orders hiện tại + mới
-      setOrders((prev) => {
-        const existingOrders = prev[status];
-        const allOrdersMap = new Map<number, OrderHistory>();
+            // If refreshing, replace the entire list
+            if (isRefreshing) {
+                setOrders(prev => ({ ...prev, [status]: newOrders }));
+            } else {
+                // Otherwise merge with existing list
+                setOrders(prev => {
+                    const existingOrders = prev[status];
+                    const allOrdersMap = new Map<number, OrderHistory>();
 
-        existingOrders.forEach((order) => {
-          allOrdersMap.set(order.id, order);
-        });
+                    existingOrders.forEach(order => {
+                        allOrdersMap.set(order.id, order);
+                    });
 
-        newOrders.forEach((order) => {
-          allOrdersMap.set(order.id, order);
-        });
+                    newOrders.forEach(order => {
+                        allOrdersMap.set(order.id, order);
+                    });
 
-        return {
-          ...prev,
-          [status]: Array.from(allOrdersMap.values()),
-        };
-      });
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      setHasMore((prev) => ({ ...prev, [status]: false }));
-    } finally {
-      setLoadingMore(false);
-      // Đánh dấu đã xử lý xong
-      pendingRequests.current[status] = false;
-    }
-  }, [activeTab, page, hasMore]);
+                    return {
+                        ...prev,
+                        [status]: Array.from(allOrdersMap.values())
+                    };
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            setHasMore(prev => ({ ...prev, [status]: false }));
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+            pendingRequests.current[status] = false;
+        }
+    }, [activeTab, page, hasMore]);
 
   const keyExtractor = useCallback(
     (item: OrderHistory) => `order-${item.id}`,
@@ -236,29 +243,27 @@ const OrderHistoryScreen = () => {
             </Text>
           </View>
 
-          {/* Action buttons */}
-          <View style={styles.actionRow}>
-            {order.canReview &&
-              !order.isReviewed &&
-              activeTab === "DELIVERED" && (
-                <CustomButton
-                  variant="outlined"
-                  title="Đánh giá"
-                  onPress={() => {}}
-                  style={styles.reviewButton}
-                  textStyle={styles.reviewButtonText}
-                />
-              )}
-            {order.isReviewed && activeTab === "DELIVERED" && (
-              <CustomButton
-                variant="outlined"
-                title="Xem đánh giá"
-                onPress={() => {}}
-                style={styles.reviewButton}
-                textStyle={styles.reviewButtonText}
-              />
-            )}
-          </View>
+                {/* Action buttons */}
+                <View style={styles.actionRow}>
+                    {order.canReview && !order.isReviewed && activeTab === "DELIVERED" && (
+                        <CustomButton
+                            variant="outlined"
+                            title="Đánh giá"
+                            onPress={() => { router.navigate(`/account/reviews?orderId=${order.id}`) }}
+                            style={styles.reviewButton}
+                            textStyle={styles.reviewButtonText}
+                        />
+                    )}
+                    {order.isReviewed && activeTab === "DELIVERED" && (
+                        <CustomButton
+                            variant="outlined"
+                            title="Xem đánh giá"
+                            onPress={() => { router.navigate(`/account/list-review?orderId=${order.id}`) }}
+                            style={styles.reviewButton}
+                            textStyle={styles.reviewButtonText}
+                        />
+                    )}
+                </View>
 
           {/* Show more button for multiple items */}
           {order.lineItems.length > 1 && (
@@ -285,9 +290,27 @@ const OrderHistoryScreen = () => {
       const prevExpanded = expandedItems[prevOrder.id];
       const nextExpanded = expandedItems[nextOrder.id];
 
-      return prevOrder.id === nextOrder.id && prevExpanded === nextExpanded;
-    }
-  );
+        return prevOrder.id === nextOrder.id && prevExpanded === nextExpanded;
+    });
+
+    // Add this useFocusEffect to refresh orders when screen gains focus
+    useFocusEffect(
+        useCallback(() => {
+            // Reset the page for the current tab to refresh from beginning
+            setPage(prev => ({ ...prev, [activeTab]: 0 }));
+            setOrders(prev => ({ ...prev, [activeTab]: [] }));
+            setHasMore(prev => ({ ...prev, [activeTab]: true }));
+
+            // Small delay to ensure state updates complete
+            setTimeout(() => {
+                fetchData();
+            }, 100);
+
+            return () => {
+                // Optional cleanup if needed
+            };
+        }, [activeTab])
+    );
 
   return (
     <SafeAreaView style={styles.container}>

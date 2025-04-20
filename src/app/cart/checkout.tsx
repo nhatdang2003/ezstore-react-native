@@ -391,28 +391,26 @@ const CheckoutScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Points Section */}
-        {orderPreview && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Điểm thưởng</Text>
-            <View style={styles.pointsContainer}>
-              <View style={styles.pointsInfo}>
-                <Text style={styles.pointsText}>
-                  Điểm hiện có: {orderPreview.points}
-                </Text>
-                <Text style={styles.pointsValue}>
-                  (Tương đương {(orderPreview.points * 100).toLocaleString()}đ)
-                </Text>
-              </View>
-              <CustomSwitch
-                value={usePoints}
-                onValueChange={(newValue) => {
-                  setUsePoints(newValue);
-                }}
-              />
-            </View>
-          </View>
-        )}
+                {/* Points Section */}
+                {orderPreview && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Điểm thưởng</Text>
+                        <View style={styles.pointsContainer}>
+                            <View style={styles.pointsInfo}>
+                                <Text style={styles.pointsText}>Điểm hiện có: {orderPreview.points}</Text>
+                                <Text style={styles.pointsValue}>
+                                    (Tương đương {(orderPreview.points).toLocaleString()}đ)
+                                </Text>
+                            </View>
+                            <CustomSwitch
+                                value={usePoints}
+                                onValueChange={(newValue) => {
+                                    setUsePoints(newValue);
+                                }}
+                            />
+                        </View>
+                    </View>
+                )}
 
         {/* Payment Summary */}
         {orderPreview && (
