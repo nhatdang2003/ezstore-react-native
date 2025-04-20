@@ -182,11 +182,8 @@ export default function OrderDetails() {
                         <Text style={styles.paymentLabel}>Phương thức thanh toán</Text>
                         <View style={styles.paymentValue}>
                             <Text style={styles.paymentMethod}>
-                                Tài khoản ngân hàng đã liên k...
+                                Thanh toán khi nhận hàng
                             </Text>
-                            <TouchableOpacity>
-                                <Text style={styles.viewMore}>Xem thêm</Text>
-                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
@@ -336,7 +333,6 @@ const styles = StyleSheet.create({
     storeName: {
         fontSize: 14,
         fontWeight: "600",
-        marginLeft: 8,
     },
     productRow: {
         flexDirection: "row",
