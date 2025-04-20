@@ -112,8 +112,6 @@ const CheckoutScreen = () => {
         isUsePoint: usePoints,
       });
 
-      console.log(response);
-
       // Xử lý kết quả dựa trên phương thức thanh toán
       if (selectedPayment === PaymentMethod.COD) {
         // Với COD, điều hướng ngay đến trang success hoặc fail

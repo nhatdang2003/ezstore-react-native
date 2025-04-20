@@ -30,7 +30,6 @@ export default function OrderDetails() {
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
-            console.log(orderId)
             if (!orderId) {
                 setError("Invalid order ID");
                 setLoading(false);
@@ -39,7 +38,6 @@ export default function OrderDetails() {
 
             try {
                 const response = await getOrderDetail(Number(orderId));
-                console.log(response.data)
                 setOrderDetail(response.data);
             } catch (err) {
                 console.error("Error fetching order details:", err);

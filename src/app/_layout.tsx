@@ -10,6 +10,8 @@ import {
 } from "@expo-google-fonts/lora";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFilterStore } from "@/src/store/filterStore";
+import { connectWebSocket } from "@/src/services/websocket.service";
+import { refreshNotificationCount } from "@/src/services/websocket.service";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +28,10 @@ export default function RootLayout() {
         const checkUserLoggedIn = async () => {
             const access_token = await AsyncStorage.getItem("access_token");
             if (access_token) {
+                // Initialize WebSocket connection
+                await connectWebSocket();
+                // Get initial notification count
+                await refreshNotificationCount();
                 router.navigate("/(tabs)");
             } else {
                 router.navigate("/(auth)/login");
@@ -89,6 +95,7 @@ export default function RootLayout() {
                 <Stack.Screen name="payment/success" options={{ headerShown: false }} />
                 <Stack.Screen name="payment/fail" options={{ headerShown: false }} />
                 <Stack.Screen name="payment/payment" options={{ headerShown: false }} />
+                <Stack.Screen name="notification/promo_campaign" options={{ headerShown: false }} />
             </Stack>
         </View>
     );

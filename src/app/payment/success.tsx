@@ -14,7 +14,6 @@ const PaymentSuccessScreen = () => {
 
     // Reset giỏ hàng khi thanh toán thành công
     useEffect(() => {
-        console.log('>>> ORDER ID: ', orderId);
         setCartCount(0);
     }, []);
 
