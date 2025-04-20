@@ -1,87 +1,25 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet,
     View,
     Text,
     FlatList,
-    RefreshControl,
     TouchableOpacity,
     Image,
-    Modal,
     SafeAreaView,
-    StatusBar,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { COLOR } from '@/src/constants/color';
-import { useRouter } from 'expo-router';
-
-// Types
-type NotificationType = 'promotion' | 'order';
-
-interface Notification {
-    id: string;
-    title: string;
-    message: string;
-    timestamp: Date;
-    type: NotificationType;
-    read: boolean;
-}
-
-// Dữ liệu mẫu
-const SAMPLE_NOTIFICATIONS: Notification[] = [
-    {
-        id: '1',
-        title: 'Khuyến mãi hè!',
-        message: 'Giảm 50% cho tất cả sản phẩm mùa hè. Ưu đãi có thời hạn!',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 phút trước
-        type: 'promotion',
-        read: false,
-    },
-    {
-        id: '2',
-        title: 'Đơn hàng #ORD-12345678901239 đã được gửi đi',
-        message: 'Đơn hàng của bạn đã được gửi đi và sẽ đến trong 2-3 ngày làm việc.',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 phút trước
-        type: 'order',
-        read: false,
-    },
-    {
-        id: '3',
-        title: 'Bộ sưu tập mới đã ra mắt',
-        message: 'Khám phá bộ sưu tập mùa thu mới với các thiết kế độc quyền!',
-        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 giờ trước
-        type: 'promotion',
-        read: true,
-    },
-    {
-        id: '4',
-        title: 'Đơn hàng #12346 đã được giao',
-        message: 'Đơn hàng của bạn đã được giao. Chúc bạn hài lòng với sản phẩm!',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 ngày trước
-        type: 'order',
-        read: true,
-    },
-    {
-        id: '5',
-        title: 'Khuyến mãi cuối tuần',
-        message: 'Đừng bỏ lỡ khuyến mãi cuối tuần với giảm giá lên đến 70%!',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 ngày trước
-        type: 'promotion',
-        read: true,
-    },
-    {
-        id: '6',
-        title: 'Đơn hàng #12347 đã được xác nhận',
-        message: 'Đơn hàng của bạn đã được xác nhận và đang được xử lý.',
-        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 ngày trước
-        type: 'order',
-        read: true,
-    },
-];
+import { useFocusEffect, useRouter } from 'expo-router';
+import { getNotifications, markReadNotification } from '@/src/services/notification.service';
+import { Notification } from '@/src/types/notification.type';
+import { useNotificationStore } from '@/src/store/notificationStore';
 
 // Hàm hỗ trợ định dạng thời gian
-const formatTimestamp = (date: Date) => {
+const formatTimestamp = (dateString: string) => {
+    const date = parseISO(dateString);
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
@@ -99,31 +37,61 @@ const formatTimestamp = (date: Date) => {
 
 const NotificationScreen = () => {
     const router = useRouter();
-    const [notifications, setNotifications] = useState<Notification[]>(SAMPLE_NOTIFICATIONS);
-    const [refreshing, setRefreshing] = useState(false);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true);
+    const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
+    const decrementUnreadCount = useNotificationStore(state => state.decrementUnreadCount);
 
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        // Giả lập tải dữ liệu mới
-        setTimeout(() => {
-            setRefreshing(false);
-        }, 1500);
-    }, []);
+    const fetchNotifications = async () => {
+        setLoading(true);
+        try {
+            const response = await getNotifications();
+            if (response.statusCode === 200) {
+                setNotifications(response.data.notifications);
+                setUnreadCount(response.data.unreadCount);
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    const handleNotificationPress = (notification: Notification) => {
-        // Đánh dấu là đã đọc
-        setNotifications(prev =>
-            prev.map(item =>
-                item.id === notification.id ? { ...item, read: true } : item
-            )
-        );
-        // if (type==='ORDER_STATUS_UPDATED')
-        router.push(`/notification/promo_campaign`);
+    useFocusEffect(
+        useCallback(() => {
+            fetchNotifications();
+        }, [])
+    );
+
+    const handleNotificationPress = async (notification: Notification) => {
+        try {
+            // Only mark as read if not already read
+            if (!notification.read) {
+                await markReadNotification(notification.id);
+                // Update local state
+                setNotifications(prev =>
+                    prev.map(item =>
+                        item.id === notification.id ? { ...item, read: true } : item
+                    )
+                );
+                // Decrement unread count
+                decrementUnreadCount();
+            }
+
+            // Navigate based on notification type
+            if (notification.type === 'ORDER_STATUS_UPDATED' && notification.referenceId) {
+                router.navigate(`/account/orders`);
+            } else if (notification.type === 'PROMOTION_NOTIFICATION') {
+                router.navigate(`/notification/promo_campaign`);
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
     };
 
     const renderNotificationItem = ({ item }: { item: Notification }) => {
-        const typeColor = item.type === 'promotion' ? '#9C27B0' : '#2196F3';
-        const typeIcon = item.type === 'promotion' ? 'gift-outline' : 'cube-outline';
+        const typeColor = item.type === 'PROMOTION_NOTIFICATION' ? '#9C27B0' : '#2196F3';
+        const typeIcon = item.type === 'PROMOTION_NOTIFICATION' ? 'gift-outline' : 'cube-outline';
 
         return (
             <TouchableOpacity
@@ -138,13 +106,21 @@ const NotificationScreen = () => {
                         <View style={styles.titleContainer}>
                             {!item.read && <View style={styles.unreadDot} />}
                             <Ionicons name={typeIcon} size={20} color={typeColor} style={styles.typeIcon} />
-                            <Text style={[styles.notificationTitle, !item.read && styles.boldText]}>
+                            <Text style={[
+                                styles.notificationTitle,
+                                !item.read && styles.boldText
+                            ]}>
                                 {item.title}
                             </Text>
                         </View>
                     </View>
-                    <Text style={styles.notificationMessage}>{item.message}</Text>
-                    <Text style={styles.timestamp}>{formatTimestamp(item.timestamp)}</Text>
+                    <Text style={[
+                        styles.notificationMessage,
+                        !item.read && styles.unreadMessage
+                    ]}>
+                        {item.content}
+                    </Text>
+                    <Text style={styles.timestamp}>{formatTimestamp(item.notificationDate)}</Text>
                 </View>
             </TouchableOpacity>
         );
@@ -163,18 +139,23 @@ const NotificationScreen = () => {
         </View>
     );
 
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color={COLOR.PRIMARY} />
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
             {notifications.length > 0 ? (
                 <FlatList
                     showsVerticalScrollIndicator={false}
-                    data={notifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())}
+                    data={notifications.sort((a, b) => new Date(b.notificationDate).getTime() - new Date(a.notificationDate).getTime())}
                     renderItem={renderNotificationItem}
-                    keyExtractor={item => item.id}
+                    keyExtractor={item => item.id.toString()}
                     contentContainerStyle={styles.listContainer}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
                     ListHeaderComponent={() => (
                         <View style={styles.listHeader}>
                             <Text style={styles.listHeaderText}>
@@ -195,6 +176,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+    },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
         padding: 16,
@@ -271,6 +256,9 @@ const styles = StyleSheet.create({
         color: '#757575',
         marginBottom: 8,
     },
+    unreadMessage: {
+        color: '#333333',
+    },
     timestamp: {
         fontSize: 12,
         color: '#9e9e9e',
@@ -310,54 +298,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#757575',
         textAlign: 'center',
-    },
-    modalOverlay: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        width: '90%',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        flex: 1,
-    },
-    modalTimestamp: {
-        fontSize: 14,
-        color: '#9e9e9e',
-        marginVertical: 8,
-    },
-    modalMessage: {
-        fontSize: 16,
-        color: '#212121',
-        marginTop: 16,
-        lineHeight: 24,
-    },
-    footerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 4,
     },
 });
 

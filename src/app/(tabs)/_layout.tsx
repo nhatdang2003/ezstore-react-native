@@ -4,11 +4,13 @@ import { TouchableOpacity, TouchableOpacityProps, View, Text, StyleSheet } from 
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLOR } from '@/src/constants/color';
 import { useCartStore } from '@/src/store/cartStore';
+import { useNotificationStore } from '@/src/store/notificationStore';
 import { FONT } from '@/src/constants/font';
 
 export default function TabLayout() {
     const router = useRouter()
     const cartCount = useCartStore(state => state.cartCount);
+    const unreadCount = useNotificationStore(state => state.unreadCount);
 
     return (
         <Tabs screenOptions={{
@@ -87,7 +89,20 @@ export default function TabLayout() {
                     title: 'Thông báo',
                     headerTitleAlign: 'center',
                     tabBarIcon: ({ color, size, focused }) => (
-                        <MaterialCommunityIcons name={focused ? "bell" : "bell-outline"} color={color} size={size} />
+                        <View>
+                            <MaterialCommunityIcons
+                                name={focused ? "bell" : "bell-outline"}
+                                color={color}
+                                size={size}
+                            />
+                            {unreadCount > 0 && (
+                                <View style={styles.notificationBadge}>
+                                    <Text style={styles.notificationBadgeText}>
+                                        {unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     ),
                 }}
             />
@@ -119,6 +134,23 @@ const styles = StyleSheet.create({
         padding: 2,
     },
     cartBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        right: -6,
+        top: -6,
+        backgroundColor: '#FF424E',
+        borderRadius: 10,
+        minWidth: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 2,
+    },
+    notificationBadgeText: {
         color: '#fff',
         fontSize: 10,
         fontWeight: 'bold',

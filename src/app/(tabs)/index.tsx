@@ -10,6 +10,8 @@ import { ProductCardProps } from '@/src/types/product.type'
 import { router, useFocusEffect } from 'expo-router'
 import { useCartStore } from '@/src/store/cartStore'
 import { getUserCartInfo } from '@/src/services/user.service'
+import { getUnreadNotificationCount } from '@/src/services/notification.service'
+import { useNotificationStore } from '@/src/store/notificationStore'
 
 const HomeTab = () => {
     const [featuredProducts, setFeaturedProducts] = useState<ProductCardProps[]>([])
@@ -18,15 +20,25 @@ const HomeTab = () => {
     const [discountedProducts, setDiscountedProducts] = useState<ProductCardProps[]>([])
     const [loading, setLoading] = useState(true)
     const setCartCount = useCartStore(state => state.setCartCount);
+    const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
 
     useFocusEffect(
         useCallback(() => {
             const fetchUserInfo = async () => {
                 try {
+                    // Fetch cart count
                     const userInfo = await getUserCartInfo();
-                    setCartCount(userInfo.data.cartItemsCount);
+                    if (userInfo.statusCode === 200) {
+                        setCartCount(userInfo.data.cartItemsCount);
+                    }
+
+                    // Fetch notification count
+                    const notificationCountResponse = await getUnreadNotificationCount();
+                    if (notificationCountResponse.statusCode === 200) {
+                        setUnreadCount(notificationCountResponse.data);
+                    }
                 } catch (error) {
-                    console.error('Error fetching cart count:', error);
+                    console.error('Error fetching user info:', error);
                 }
             };
 
