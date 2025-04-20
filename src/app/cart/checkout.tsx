@@ -327,7 +327,7 @@ const CheckoutScreen = () => {
                             <View style={styles.pointsInfo}>
                                 <Text style={styles.pointsText}>Điểm hiện có: {orderPreview.points}</Text>
                                 <Text style={styles.pointsValue}>
-                                    (Tương đương {(orderPreview.points * 100).toLocaleString()}đ)
+                                    (Tương đương {(orderPreview.points).toLocaleString()}đ)
                                 </Text>
                             </View>
                             <CustomSwitch
