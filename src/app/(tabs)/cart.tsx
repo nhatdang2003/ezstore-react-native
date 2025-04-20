@@ -212,8 +212,8 @@ const CartTab = () => {
         // Pass the selected cartItemIds to the checkout screen
         router.navigate({
             pathname: '/cart/checkout',
-            params: { 
-                cartItemIds: JSON.stringify(selectedItems) 
+            params: {
+                cartItemIds: JSON.stringify(selectedItems)
             }
         });
     };

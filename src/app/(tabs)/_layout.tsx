@@ -82,6 +82,16 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
+                name="notification"
+                options={{
+                    title: 'Thông báo',
+                    headerTitleAlign: 'center',
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <MaterialCommunityIcons name={focused ? "bell" : "bell-outline"} color={color} size={size} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="account"
                 options={{
                     title: 'Tài khoản',
