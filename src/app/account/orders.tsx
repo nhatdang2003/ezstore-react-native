@@ -163,10 +163,18 @@ const OrderHistoryScreen = () => {
         setExpanded((prev) => !prev);
       };
 
+      // Navigate to order details with order id
+      const navigateToDetails = () => {
+        router.navigate({
+          pathname: "/account/order_details",
+          params: { id: order.id }
+        });
+      };
+
       return (
         <TouchableOpacity
           style={styles.orderCard}
-          onPress={() => router.push("/account/order_details")}
+          onPress={navigateToDetails}
         >
           {/* First product info (always shown) */}
           <View style={styles.productRow}>

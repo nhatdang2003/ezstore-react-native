@@ -118,9 +118,15 @@ const CheckoutScreen = () => {
       if (selectedPayment === PaymentMethod.COD) {
         // Với COD, điều hướng ngay đến trang success hoặc fail
         if (response.statusCode === 200) {
-          router.navigate("/payment/success");
+          router.replace({
+            pathname: "/payment/success",
+            params: {
+              orderId: response.data.orderId,
+              orderCode: response.data.code,
+            }
+          });
         } else {
-          router.navigate({
+          router.replace({
             pathname: "/payment/fail",
             params: {
               message: "Đã xảy ra lỗi khi tạo đơn hàng. Vui lòng thử lại.",
@@ -130,12 +136,16 @@ const CheckoutScreen = () => {
       } else if (selectedPayment === PaymentMethod.VNPAY) {
         // Với VNPAY, điều hướng đến trang payment với URL thanh toán
         if (response.data.paymentUrl) {
-          router.navigate({
+          router.replace({
             pathname: "/payment/payment",
-            params: { paymentUrl: response.data.paymentUrl },
+            params: {
+              orderId: response.data.orderId,
+              orderCode: response.data.code,
+              paymentUrl: response.data.paymentUrl
+            },
           });
         } else {
-          router.navigate({
+          router.replace({
             pathname: "/payment/fail",
             params: {
               message: "Không thể khởi tạo cổng thanh toán. Vui lòng thử lại.",
@@ -307,7 +317,7 @@ const CheckoutScreen = () => {
               style={[
                 styles.radioButton,
                 selectedDelivery === DeliveryMethod.GHN &&
-                  styles.radioButtonSelected,
+                styles.radioButtonSelected,
               ]}
             >
               {selectedDelivery === DeliveryMethod.GHN && (
@@ -329,7 +339,7 @@ const CheckoutScreen = () => {
               style={[
                 styles.radioButton,
                 selectedDelivery === DeliveryMethod.EXPRESS &&
-                  styles.radioButtonSelected,
+                styles.radioButtonSelected,
               ]}
             >
               {selectedDelivery === DeliveryMethod.EXPRESS && (
@@ -356,7 +366,7 @@ const CheckoutScreen = () => {
               style={[
                 styles.radioButton,
                 selectedPayment === PaymentMethod.COD &&
-                  styles.radioButtonSelected,
+                styles.radioButtonSelected,
               ]}
             >
               {selectedPayment === PaymentMethod.COD && (
@@ -381,7 +391,7 @@ const CheckoutScreen = () => {
               style={[
                 styles.radioButton,
                 selectedPayment === PaymentMethod.VNPAY &&
-                  styles.radioButtonSelected,
+                styles.radioButtonSelected,
               ]}
             >
               {selectedPayment === PaymentMethod.VNPAY && (
@@ -391,26 +401,26 @@ const CheckoutScreen = () => {
           </TouchableOpacity>
         </View>
 
-                {/* Points Section */}
-                {orderPreview && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Điểm thưởng</Text>
-                        <View style={styles.pointsContainer}>
-                            <View style={styles.pointsInfo}>
-                                <Text style={styles.pointsText}>Điểm hiện có: {orderPreview.points}</Text>
-                                <Text style={styles.pointsValue}>
-                                    (Tương đương {(orderPreview.points).toLocaleString()}đ)
-                                </Text>
-                            </View>
-                            <CustomSwitch
-                                value={usePoints}
-                                onValueChange={(newValue) => {
-                                    setUsePoints(newValue);
-                                }}
-                            />
-                        </View>
-                    </View>
-                )}
+        {/* Points Section */}
+        {orderPreview && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Điểm thưởng</Text>
+            <View style={styles.pointsContainer}>
+              <View style={styles.pointsInfo}>
+                <Text style={styles.pointsText}>Điểm hiện có: {orderPreview.points}</Text>
+                <Text style={styles.pointsValue}>
+                  (Tương đương {(orderPreview.points).toLocaleString()}đ)
+                </Text>
+              </View>
+              <CustomSwitch
+                value={usePoints}
+                onValueChange={(newValue) => {
+                  setUsePoints(newValue);
+                }}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Payment Summary */}
         {orderPreview && (

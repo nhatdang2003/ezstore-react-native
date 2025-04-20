@@ -2,26 +2,31 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FONT } from '@/src/constants/font';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCartStore } from '@/src/store/cartStore';
 import CustomButton from '@/src/components/CustomButton';
 import { COLOR } from '@/src/constants/color';
 
 const PaymentSuccessScreen = () => {
     const router = useRouter();
+    const { orderId, orderCode } = useLocalSearchParams();
     const setCartCount = useCartStore(state => state.setCartCount);
 
     // Reset giỏ hàng khi thanh toán thành công
     useEffect(() => {
+        console.log('>>> ORDER ID: ', orderId);
         setCartCount(0);
     }, []);
 
     const handleGoHome = () => {
-        router.navigate('/(tabs)');
+        router.replace('/(tabs)');
     };
 
     const handleViewOrder = () => {
-        router.navigate('/(tabs)');
+        router.replace({
+            pathname: "/account/order_details",
+            params: { orderId: orderId }
+        });
     };
 
     return (
@@ -37,7 +42,7 @@ const PaymentSuccessScreen = () => {
                 </Text>
 
                 <Text style={styles.orderInfo}>
-                    Mã đơn hàng: #ORD{Math.floor(100000 + Math.random() * 900000)}
+                    Mã đơn hàng: {orderCode}
                 </Text>
 
                 <View style={styles.buttonContainer}>

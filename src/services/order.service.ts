@@ -1,7 +1,12 @@
 import axios from '@/src/services/instance_axios';
 import { PaginatedResponse, Response } from '@/src/types/response.type';
-import { CheckoutRes, OrderHistory, OrderPreviewReq, OrderPreviewRes } from '../types/order.type';
-import { OrderReviewRequest, OrderReviewResponse } from '../types/review.type';
+import { OrderReviewRequest, OrderReviewResponse } from '@/src/types/review.type';
+import { CheckoutRes, OrderDetailRes, OrderHistory, OrderPreviewReq, OrderPreviewRes } from '@/src/types/order.type';
+
+export const getOrderDetail = (orderId: number): Promise<Response<OrderDetailRes>> => {
+    const url = `/api/v1/orders/user/${orderId}`
+    return axios.get(url)
+}
 
 export const getOrderPreview = (data: OrderPreviewReq): Promise<Response<OrderPreviewRes>> => {
     const url = `api/v1/orders/preview`
@@ -18,7 +23,7 @@ export const getOrderHistoryUser = ({
     size = 10,
     status,
 }: any): Promise<PaginatedResponse<OrderHistory>> => {
-    let url = `api/v1/orders/user?page=${page}&size=${size}&rt=createdAt,desc`
+    let url = `api/v1/orders/user?page=${page}&size=${size}&sort=createdAt,desc`
     if (status) {
         url += `&filter=status~'${status}'`
     }

@@ -7,7 +7,7 @@ import ConfirmModal from '@/src/components/ConfirmModal';
 import { validateVnpayPayment } from '@/src/services/payment.service';
 
 const PaymentScreen = () => {
-    const { paymentUrl } = useLocalSearchParams();
+    const { orderId, orderCode, paymentUrl } = useLocalSearchParams();
     const [verifying, setVerifying] = useState(false);
     const [confirmVisible, setConfirmVisible] = useState(false);
     const webViewRef = useRef<WebView>(null);
@@ -42,7 +42,13 @@ const PaymentScreen = () => {
                 // Kiểm tra kết quả từ API
                 if (response.statusCode === 200) {
                     // Thanh toán thành công
-                    router.replace('/payment/success');
+                    router.replace({
+                        pathname: '/payment/success',
+                        params: {
+                            orderId: orderId,
+                            orderCode: orderCode
+                        }
+                    });
                 } else {
                     // Thanh toán thất bại
                     const errorMessage = response?.message || 'Giao dịch không thành công';

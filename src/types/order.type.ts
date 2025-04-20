@@ -18,6 +18,7 @@ export interface OrderPreviewRes {
 }
 
 export interface CheckoutRes {
+    orderId: number,
     code: string,
     status: string,
     paymentStatus: string,
@@ -93,4 +94,30 @@ export interface OrderHistory {
     canReview: boolean;
     isReviewed: boolean;
     cancelReason: string | null;
+}
+
+export interface OrderDetailRes {
+    id: number;
+    code: string;
+    orderDate: string;
+    status:
+    | "PENDING"
+    | "PROCESSING"
+    | "SHIPPING"
+    | "DELIVERED"
+    | "CANCELLED"
+    | "RETURNED";
+    paymentMethod: "COD" | "VNPAY";
+    paymentStatus: "PENDING" | "SUCCESS" | "FAILED";
+    paymentDate: string;
+    deliveryMethod: "GHN" | "EXPRESS";
+    lineItems: OrderLineItem[];
+    total: number;
+    shippingFee: number;
+    discount: number;
+    finalTotal: number;
+    canReview: boolean;
+    isReviewed: boolean;
+    cancelReason: string | null;
+    shippingProfile: ShippingProfile;
 }
