@@ -121,3 +121,45 @@ export interface OrderDetailRes {
     cancelReason: string | null;
     shippingProfile: ShippingProfile;
 }
+
+export interface OrderStatisticsSummaryRequest {
+    startDate: string;
+    endDate: string;
+}
+
+export interface OrderStatisticsSummaryResponse {
+    totalAmount: number;
+    totalOrderCount: number;
+
+    statusBreakdown: {
+        pending: {
+            count: number,
+            amount: number
+        },
+        processing: {
+            count: number,
+            amount: number
+        },
+        shipping: {
+            count: number,
+            amount: number
+        },
+        delivered: {
+            count: number,
+            amount: number
+        }
+    }
+}
+
+export interface MonthlySpendingChartResponse {
+    labels: string[];  // e.g. ["7/23", "8/23", "9/23"]
+    values: number[];
+    counts: number[];
+}
+
+export interface StatusSpendingChartResponse {
+    pending: number;
+    processing: number;
+    shipping: number;
+    delivered: number;
+}

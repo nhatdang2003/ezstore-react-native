@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,6 +9,7 @@ import {
     SafeAreaView,
     ScrollView,
     Modal,
+    ActivityIndicator,
 } from 'react-native';
 import { BarChart, LineChart } from 'react-native-chart-kit';
 import Animated, { FadeInRight, FadeIn } from 'react-native-reanimated';
@@ -17,42 +18,34 @@ import { useRouter } from 'expo-router';
 import DatePicker from '../../components/Datepicker';
 import { COLOR } from '../../constants/color';
 import { FONT } from '@/src/constants/font';
-
-// Mock data với đơn vị VNĐ
-const orderData = [
-    { id: 'ĐH-7829', date: '2023-06-15', amount: 2989000, status: 'DELIVERED' },
-    { id: 'ĐH-7830', date: '2023-06-18', amount: 2069000, status: 'SHIPPING' },
-    { id: 'ĐH-7831', date: '2023-06-20', amount: 3439000, status: 'PENDING' },
-    { id: 'ĐH-7832', date: '2023-06-22', amount: 1725000, status: 'DELIVERED' },
-    { id: 'ĐH-7833', date: '2023-06-25', amount: 4599000, status: 'PROCESSING' },
-    { id: 'ĐH-7834', date: '2023-06-27', amount: 1380000, status: 'SHIPPING' },
-    { id: 'ĐH-7835', date: '2023-06-30', amount: 2989000, status: 'RETURNED' },
-    { id: 'ĐH-7836', date: '2023-07-05', amount: 1890000, status: 'DELIVERED' },
-    { id: 'ĐH-7837', date: '2023-07-12', amount: 3250000, status: 'DELIVERED' },
-    { id: 'ĐH-7838', date: '2023-07-18', amount: 2450000, status: 'PROCESSING' },
-    { id: 'ĐH-7839', date: '2023-07-25', amount: 1780000, status: 'PENDING' },
-    { id: 'ĐH-7840', date: '2023-08-02', amount: 3600000, status: 'DELIVERED' },
-    { id: 'ĐH-7841', date: '2023-08-10', amount: 2100000, status: 'SHIPPING' },
-    { id: 'ĐH-7842', date: '2023-08-15', amount: 1950000, status: 'DELIVERED' },
-];
+import { getUserOrderStatistics, getUserOrderMonthlyChart, getUserOrderStatusChart } from '@/src/services/order.service';
+import {
+    OrderStatisticsSummaryRequest,
+    OrderStatisticsSummaryResponse,
+    MonthlySpendingChartResponse,
+    StatusSpendingChartResponse
+} from '@/src/types/order.type';
 
 const OrderStatistics = () => {
     const router = useRouter();
-    const [activeStatusFilter, setActiveStatusFilter] = useState('Tất cả');
     const [showDateRangePicker, setShowDateRangePicker] = useState(false);
     const [chartType, setChartType] = useState('month'); // 'month', 'status'
+    const [loading, setLoading] = useState(false);
+    const [chartLoading, setChartLoading] = useState(false);
+    const [statistics, setStatistics] = useState<OrderStatisticsSummaryResponse | null>(null);
+    const [monthlyChartData, setMonthlyChartData] = useState<MonthlySpendingChartResponse | null>(null);
+    const [statusChartData, setStatusChartData] = useState<StatusSpendingChartResponse | null>(null);
 
     // Set default date range to the last 6 months
     const today = new Date();
     const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
     sixMonthsAgo.setDate(1);
 
     const [startDate, setStartDate] = useState(sixMonthsAgo);
     const [endDate, setEndDate] = useState(today);
 
-    const statusFilters = ['Tất cả', 'Chờ xác nhận', 'Đang xử lý', 'Đang giao hàng', 'Đã giao hàng', 'Đã hoàn trả'];
-
-    // Status colors with better contrasting colors
+    // Status colors
     const statusColors = {
         'PENDING': '#FFB800',     // Vàng đậm - Chờ xác nhận
         'PROCESSING': '#FF9500',  // Cam - Đang xử lý
@@ -63,132 +56,129 @@ const OrderStatistics = () => {
         'TOTAL': COLOR.PRIMARY,   // Đen - Tổng
     };
 
-    // Filter orders by date range
-    const filterOrdersByDateRange = () => {
-        return orderData.filter(order => {
-            const orderDate = new Date(order.date);
-            return orderDate >= startDate && orderDate <= endDate;
-        });
+    // Format date for API request
+    const formatDateForAPI = (date: Date): string => {
+        return date.toISOString().split('T')[0];
     };
 
-    // Filter orders by status and date range
-    const getFilteredOrders = () => {
-        const dateFilteredOrders = filterOrdersByDateRange();
+    // Fetch statistics from API
+    const fetchStatistics = async () => {
+        try {
+            setLoading(true);
+            setChartLoading(true);
 
-        if (activeStatusFilter === 'Tất cả') {
-            return dateFilteredOrders;
-        } else {
-            return dateFilteredOrders.filter(
-                order => getStatusText(order.status).toLowerCase() === activeStatusFilter.toLowerCase()
-            );
+            const request: OrderStatisticsSummaryRequest = {
+                startDate: formatDateForAPI(startDate),
+                endDate: formatDateForAPI(endDate)
+            };
+
+            // Fetch all data in parallel
+            const [statsResponse, monthlyResponse, statusResponse] = await Promise.all([
+                getUserOrderStatistics(request),
+                getUserOrderMonthlyChart(request),
+                getUserOrderStatusChart(request)
+            ]);
+
+            setStatistics(statsResponse.data || null);
+            setMonthlyChartData(monthlyResponse.data || null);
+            setStatusChartData(statusResponse.data || null);
+        } catch (error) {
+            console.error('Error fetching order statistics:', error);
+        } finally {
+            setLoading(false);
+            setChartLoading(false);
         }
     };
 
-    // Calculate statistics based on filtered orders
+    // Fetch data when component mounts
+    useEffect(() => {
+        fetchStatistics();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Calculate statistics for cards
     const calculateStatistics = () => {
-        const filteredOrders = getFilteredOrders();
-
-        // Group by status and calculate totals - exclude RETURNED orders
-        const stats = {
-            'PENDING': { count: 0, amount: 0 },
-            'PROCESSING': { count: 0, amount: 0 },
-            'SHIPPING': { count: 0, amount: 0 },
-            'DELIVERED': { count: 0, amount: 0 },
-            'TOTAL': { count: 0, amount: 0 }
-        };
-
-        filteredOrders.forEach(order => {
-            const status = order.status.toUpperCase();
-            // Skip returned orders completely
-            if (status === 'RETURNED') return;
-
-            if (stats[status]) {
-                stats[status].count += 1;
-                stats[status].amount += order.amount;
-            }
-
-            // Add to total
-            stats['TOTAL'].count += 1;
-            stats['TOTAL'].amount += order.amount;
-        });
+        if (!statistics) {
+            return [
+                { id: 1, title: 'Chờ xác nhận', icon: 'clock-outline', count: 0, amount: 0, color: statusColors['PENDING'] },
+                { id: 2, title: 'Đang xử lý', icon: 'clipboard-text-outline', count: 0, amount: 0, color: statusColors['PROCESSING'] },
+                { id: 3, title: 'Đang giao hàng', icon: 'truck-delivery-outline', count: 0, amount: 0, color: statusColors['SHIPPING'] },
+                { id: 4, title: 'Đã giao hàng', icon: 'check-circle-outline', count: 0, amount: 0, color: statusColors['DELIVERED'] },
+                { id: 5, title: 'Tổng đơn hàng', icon: 'shopping-outline', count: 0, amount: 0, color: statusColors['TOTAL'] },
+            ];
+        }
 
         return [
-            { id: 1, title: 'Chờ xác nhận', icon: 'clock-outline', count: stats['PENDING'].count, amount: stats['PENDING'].amount, color: statusColors['PENDING'] },
-            { id: 2, title: 'Đang xử lý', icon: 'clipboard-text-outline', count: stats['PROCESSING'].count, amount: stats['PROCESSING'].amount, color: statusColors['PROCESSING'] },
-            { id: 3, title: 'Đang giao hàng', icon: 'truck-delivery-outline', count: stats['SHIPPING'].count, amount: stats['SHIPPING'].amount, color: statusColors['SHIPPING'] },
-            { id: 4, title: 'Đã giao hàng', icon: 'check-circle-outline', count: stats['DELIVERED'].count, amount: stats['DELIVERED'].amount, color: statusColors['DELIVERED'] },
-            { id: 5, title: 'Tổng đơn hàng', icon: 'shopping-outline', count: stats['TOTAL'].count, amount: stats['TOTAL'].amount, color: statusColors['TOTAL'] },
+            {
+                id: 1,
+                title: 'Chờ xác nhận',
+                icon: 'clock-outline',
+                count: statistics.statusBreakdown.pending.count,
+                amount: statistics.statusBreakdown.pending.amount,
+                color: statusColors['PENDING']
+            },
+            {
+                id: 2,
+                title: 'Đang xử lý',
+                icon: 'clipboard-text-outline',
+                count: statistics.statusBreakdown.processing.count,
+                amount: statistics.statusBreakdown.processing.amount,
+                color: statusColors['PROCESSING']
+            },
+            {
+                id: 3,
+                title: 'Đang giao hàng',
+                icon: 'truck-delivery-outline',
+                count: statistics.statusBreakdown.shipping.count,
+                amount: statistics.statusBreakdown.shipping.amount,
+                color: statusColors['SHIPPING']
+            },
+            {
+                id: 4,
+                title: 'Đã giao hàng',
+                icon: 'check-circle-outline',
+                count: statistics.statusBreakdown.delivered.count,
+                amount: statistics.statusBreakdown.delivered.amount,
+                color: statusColors['DELIVERED']
+            },
+            {
+                id: 5,
+                title: 'Tổng đơn hàng',
+                icon: 'shopping-outline',
+                count: statistics?.totalOrderCount || 0,
+                amount: statistics?.totalAmount || 0,
+                color: statusColors['TOTAL']
+            },
         ];
     };
 
-    // Generate chart data based on filtered orders
+    // Generate chart data based on API response
     const generateChartData = () => {
-        const filteredOrders = filterOrdersByDateRange();
-
-        // For monthly chart - Group orders by month and sum amounts
-        const monthlyData = {};
-        filteredOrders.forEach(order => {
-            const orderDate = new Date(order.date);
-            const monthKey = `${orderDate.getFullYear()}-${orderDate.getMonth() + 1}`;
-
-            if (!monthlyData[monthKey]) {
-                monthlyData[monthKey] = {
-                    amount: 0,
-                    count: 0,
-                    label: `${orderDate.getMonth() + 1}/${orderDate.getFullYear().toString().substr(2)}`
-                };
-            }
-            // Only add amount for non-returned orders in the monthly chart
-            if (order.status.toUpperCase() !== 'RETURNED') {
-                monthlyData[monthKey].amount += order.amount;
-            }
-            monthlyData[monthKey].count += 1;
-        });
-
-        // Sort months chronologically
-        const sortedMonthKeys = Object.keys(monthlyData).sort();
-        const monthLabels = sortedMonthKeys.map(key => monthlyData[key].label);
-        const monthAmounts = sortedMonthKeys.map(key => monthlyData[key].amount);
-        const monthCounts = sortedMonthKeys.map(key => monthlyData[key].count);
-
-        // For status data - Group by status
-        const statusTotals = {
-            'PENDING': 0,
-            'PROCESSING': 0,
-            'SHIPPING': 0,
-            'DELIVERED': 0
-        };
-
-        filteredOrders.forEach(order => {
-            const status = order.status.toUpperCase();
-            // Skip returned orders
-            if (status === 'RETURNED') return;
-            if (statusTotals[status] !== undefined) {
-                statusTotals[status] += order.amount;
-            }
-        });
-
         return {
-            monthlyData: {
-                labels: monthLabels,
+            monthlyData: monthlyChartData ? {
+                labels: monthlyChartData.labels || [],
                 datasets: [
                     {
-                        data: monthAmounts,
-                        color: () => 'rgba(0, 0, 0, 0.8)', // solid black line
+                        data: monthlyChartData.values || [],
+                        color: () => 'rgba(0, 0, 0, 0.8)',
                         strokeWidth: 2
                     },
                 ],
                 legend: ["Chi tiêu tháng (VNĐ)"]
+            } : {
+                labels: [],
+                datasets: [{ data: [] }],
+                legend: ["Chi tiêu tháng (VNĐ)"]
             },
-            barData: {
+            barData: statusChartData ? {
                 labels: ['Chờ xác nhận', 'Đang xử lý', 'Đang giao', 'Đã giao'],
                 datasets: [
                     {
                         data: [
-                            statusTotals['PENDING'] / 1000000 || 0,
-                            statusTotals['PROCESSING'] / 1000000 || 0,
-                            statusTotals['SHIPPING'] / 1000000 || 0,
-                            statusTotals['DELIVERED'] / 1000000 || 0
+                            (statusChartData.pending || 0) / 1000000,
+                            (statusChartData.processing || 0) / 1000000,
+                            (statusChartData.shipping || 0) / 1000000,
+                            (statusChartData.delivered || 0) / 1000000
                         ],
                         colors: [
                             () => statusColors['PENDING'],
@@ -199,15 +189,16 @@ const OrderStatistics = () => {
                     }
                 ],
                 legend: ["Triệu đồng"]
+            } : {
+                labels: [],
+                datasets: [{ data: [] }],
+                legend: ["Triệu đồng"]
             }
         };
     };
 
-    const getStatusColor = (status) => {
-        return statusColors[status.toUpperCase()] || COLOR.PRIMARY;
-    };
-
-    const getStatusText = (status) => {
+    // Text helper functions
+    const getStatusText = (status: string) => {
         switch (status.toUpperCase()) {
             case 'PENDING': return 'Chờ xác nhận';
             case 'PROCESSING': return 'Đang xử lý';
@@ -219,7 +210,7 @@ const OrderStatistics = () => {
         }
     };
 
-    const getStatusShortText = (status) => {
+    const getStatusShortText = (status: string) => {
         switch (status.toUpperCase()) {
             case 'PENDING': return 'Chờ xác nhận';
             case 'PROCESSING': return 'Đang xử lý';
@@ -231,7 +222,7 @@ const OrderStatistics = () => {
         }
     };
 
-    const formatDate = (dateString) => {
+    const formatDate = (dateString: Date | string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' });
     };
@@ -240,22 +231,20 @@ const OrderStatistics = () => {
         return `${formatDate(startDate)} - ${formatDate(endDate)}`;
     };
 
-    // Format currency
-    const formatCurrency = (amount) => {
+    const formatCurrency = (amount: number) => {
         return amount.toLocaleString('vi-VN');
     };
 
-    // Calculate total spending for display in header
-    const calculateTotalSpending = () => {
-        const stats = calculateStatistics();
-        const totalItem = stats.find(item => item.title === 'Tổng đơn hàng');
-        return totalItem ? totalItem.amount : 0;
-    };
-
-    // Get current statistics and chart data
+    // Get calculated values
     const currentStats = calculateStatistics();
     const chartData = generateChartData();
-    const totalSpending = calculateTotalSpending();
+    const totalSpending = statistics?.totalAmount || 0;
+
+    // Handle date range change and apply
+    const handleApplyDateRange = () => {
+        setShowDateRangePicker(false);
+        fetchStatistics();
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -285,13 +274,19 @@ const OrderStatistics = () => {
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.totalSpendingAmount}>
-                        {formatCurrency(totalSpending)}₫
-                    </Text>
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#fff" style={styles.loader} />
+                    ) : (
+                        <>
+                            <Text style={styles.totalSpendingAmount}>
+                                {formatCurrency(totalSpending)}₫
+                            </Text>
 
-                    <Text style={styles.totalSpendingSubtitle}>
-                        {currentStats[4].count} đơn hàng trong thời gian đã chọn
-                    </Text>
+                            <Text style={styles.totalSpendingSubtitle}>
+                                {statistics?.totalOrderCount || 0} đơn hàng trong thời gian đã chọn
+                            </Text>
+                        </>
+                    )}
                 </View>
 
                 {/* Hướng dẫn sử dụng */}
@@ -307,34 +302,38 @@ const OrderStatistics = () => {
 
                 {/* Order Summary Cards */}
                 <Text style={styles.sectionTitle}>Tổng quan đơn hàng</Text>
-                <FlatList
-                    data={currentStats.filter(item => item.title !== 'Tổng đơn hàng')}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.summaryContainer}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item, index }) => (
-                        <Animated.View
-                            entering={FadeInRight.delay(index * 100).springify()}
-                            style={[styles.summaryCard, { borderColor: `${item.color}40` }]}
-                        >
-                            <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
-                                <MaterialCommunityIcons name={item.icon} size={24} color="#fff" />
-                            </View>
-                            <Text style={styles.summaryTitle}>{item.title}</Text>
-                            <View style={styles.summaryDataRow}>
-                                <Ionicons name="document-text-outline" size={16} color="#666" />
-                                <Text style={styles.summaryCount}>{item.count} đơn</Text>
-                            </View>
-                            <View style={styles.summaryDataRow}>
-                                <Ionicons name="wallet-outline" size={16} color="#666" />
-                                <Text style={[styles.summaryAmount, { color: item.color }]}>
-                                    {formatCurrency(item.amount)}₫
-                                </Text>
-                            </View>
-                        </Animated.View>
-                    )}
-                />
+                {loading ? (
+                    <ActivityIndicator size="large" color={COLOR.PRIMARY} style={styles.contentLoader} />
+                ) : (
+                    <FlatList
+                        data={currentStats.filter(item => item.title !== 'Tổng đơn hàng')}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.summaryContainer}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item, index }) => (
+                            <Animated.View
+                                entering={FadeInRight.delay(index * 100).springify()}
+                                style={[styles.summaryCard, { borderColor: `${item.color}40` }]}
+                            >
+                                <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
+                                    <MaterialCommunityIcons name={item.icon as any} size={24} color="#fff" />
+                                </View>
+                                <Text style={styles.summaryTitle}>{item.title}</Text>
+                                <View style={styles.summaryDataRow}>
+                                    <Ionicons name="document-text-outline" size={16} color="#666" />
+                                    <Text style={styles.summaryCount}>{item.count} đơn</Text>
+                                </View>
+                                <View style={styles.summaryDataRow}>
+                                    <Ionicons name="wallet-outline" size={16} color="#666" />
+                                    <Text style={[styles.summaryAmount, { color: item.color }]}>
+                                        {formatCurrency(item.amount)}₫
+                                    </Text>
+                                </View>
+                            </Animated.View>
+                        )}
+                    />
+                )}
 
                 {/* Spending Chart Toggle */}
                 <View style={styles.chartHeaderContainer}>
@@ -378,124 +377,94 @@ const OrderStatistics = () => {
                     entering={FadeIn.delay(300)}
                     style={styles.chartContainer}
                 >
-                    {chartType === 'month' ? (
-                        // Line Chart - Monthly spending
-                        chartData.monthlyData.labels.length > 0 ? (
-                            <>
-                                <View style={styles.chartExplanationContainer}>
-                                    <MaterialCommunityIcons name="information-outline" size={18} color="#666" />
-                                    <Text style={styles.chartExplanation}>
-                                        Biểu đồ thể hiện tổng chi tiêu theo tháng
-                                    </Text>
-                                </View>
+                    {chartLoading ? (
+                        <ActivityIndicator size="large" color={COLOR.PRIMARY} style={styles.contentLoader} />
+                    ) : !monthlyChartData && !statusChartData ? (
+                        <View style={styles.noDataContainer}>
+                            <Ionicons name="bar-chart-outline" size={48} color="#ccc" />
+                            <Text style={styles.noDataText}>Không có dữ liệu biểu đồ cho khoảng thời gian đã chọn</Text>
+                        </View>
+                    ) : chartType === 'month' ? (
+                        <>
+                            <View style={styles.chartExplanationContainer}>
+                                <Ionicons name="information-circle-outline" size={20} color={COLOR.PRIMARY} />
+                                <Text style={styles.chartExplanation}>
+                                    Biểu đồ thể hiện tổng chi tiêu theo từng tháng trong khoảng thời gian đã chọn
+                                </Text>
+                            </View>
+                            {monthlyChartData && monthlyChartData.labels && monthlyChartData.labels.length > 0 ? (
                                 <LineChart
                                     data={chartData.monthlyData}
-                                    width={Dimensions.get('window').width - 40}
+                                    width={Dimensions.get('window').width - 50}
                                     height={220}
                                     chartConfig={{
-                                        backgroundColor: '#FFFFFF',
-                                        backgroundGradientFrom: '#FFFFFF',
-                                        backgroundGradientTo: '#FFFFFF',
+                                        backgroundColor: '#fff',
+                                        backgroundGradientFrom: '#fff',
+                                        backgroundGradientTo: '#fff',
                                         decimalPlaces: 0,
-                                        color: (opacity = 1) => `rgba(10, 10, 10, ${opacity})`,
-                                        labelColor: (opacity = 1) => COLOR.TEXT,
+                                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                                         style: {
                                             borderRadius: 16,
                                         },
                                         propsForDots: {
-                                            r: '5',
+                                            r: '6',
                                             strokeWidth: '2',
-                                            stroke: COLOR.PRIMARY,
-                                        },
-                                        propsForBackgroundLines: {
-                                            strokeDasharray: '', // Solid lines
-                                            stroke: '#E0E0E0',
-                                            strokeWidth: 1
-                                        },
-                                        formatYLabel: (value) => {
-                                            const val = parseInt(value);
-                                            if (val >= 1000000) return `${(val / 1000000).toFixed(0)}tr`;
-                                            if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
-                                            return value;
+                                            stroke: COLOR.PRIMARY
                                         }
                                     }}
                                     bezier
                                     style={styles.chart}
-                                    withVerticalLabels={true}
-                                    withHorizontalLabels={true}
-                                    withDots={true}
-                                    withShadow={false}
-                                    withInnerLines={true}
-                                    withOuterLines={true}
-                                    fromZero={true}
-                                    segments={4}
                                 />
-                            </>
-                        ) : (
-                            <View style={styles.noDataContainer}>
-                                <Ionicons name="bar-chart-outline" size={48} color="#ccc" />
-                                <Text style={styles.noDataText}>Không có dữ liệu trong khoảng thời gian này</Text>
-                            </View>
-                        )
+                            ) : (
+                                <View style={styles.noDataContainer}>
+                                    <Text style={styles.noDataText}>Không có dữ liệu cho khoảng thời gian đã chọn</Text>
+                                </View>
+                            )}
+                        </>
                     ) : (
-                        // Bar Chart - Spending by status
                         <>
                             <View style={styles.chartExplanationContainer}>
-                                <MaterialCommunityIcons name="information-outline" size={18} color="#666" />
+                                <Ionicons name="information-circle-outline" size={20} color={COLOR.PRIMARY} />
                                 <Text style={styles.chartExplanation}>
-                                    Chi tiêu theo trạng thái đơn hàng (đơn vị: triệu đồng)
+                                    Biểu đồ thể hiện tổng chi tiêu theo trạng thái đơn hàng (triệu đồng)
                                 </Text>
                             </View>
-
-                            {/* Bar chart legend for better readability */}
-                            <View style={styles.barChartLegendContainer}>
-                                {['PENDING', 'PROCESSING', 'SHIPPING', 'DELIVERED'].map((status, index) => (
-                                    <View key={status} style={styles.barChartLegendItem}>
-                                        <View style={[styles.barChartLegendColor, { backgroundColor: statusColors[status] }]} />
-                                        <Text style={styles.barChartLegendText}>
-                                            {index + 1}. {getStatusShortText(status)}
-                                        </Text>
+                            {statusChartData ? (
+                                <>
+                                    <View style={styles.barChartLegendContainer}>
+                                        {['PENDING', 'PROCESSING', 'SHIPPING', 'DELIVERED'].map((status, index) => (
+                                            <View key={index} style={styles.barChartLegendItem}>
+                                                <View style={[styles.barChartLegendColor, { backgroundColor: statusColors[status as keyof typeof statusColors] }]} />
+                                                <Text style={styles.barChartLegendText}>{getStatusShortText(status)}</Text>
+                                            </View>
+                                        ))}
                                     </View>
-                                ))}
-                            </View>
-
-                            <BarChart
-                                data={{
-                                    labels: ['1', '2', '3', '4'], // Numbered to save space
-                                    datasets: chartData.barData.datasets
-                                }}
-                                width={Dimensions.get('window').width - 40}
-                                height={220}
-                                yAxisLabel=""
-                                yAxisSuffix=" tr"
-                                chartConfig={{
-                                    backgroundColor: '#FFFFFF',
-                                    backgroundGradientFrom: '#FFFFFF',
-                                    backgroundGradientTo: '#FFFFFF',
-                                    decimalPlaces: 1,
-                                    color: (opacity = 1, index) => {
-                                        const statuses = ['PENDING', 'PROCESSING', 'SHIPPING', 'DELIVERED'];
-                                        return index !== undefined ?
-                                            statusColors[statuses[index]] :
-                                            `rgba(10, 10, 10, ${opacity})`;
-                                    },
-                                    labelColor: (opacity = 1) => COLOR.TEXT,
-                                    style: {
-                                        borderRadius: 16,
-                                    },
-                                    barPercentage: 0.7,
-                                    propsForBackgroundLines: {
-                                        strokeDasharray: '', // Solid lines
-                                        stroke: '#E0E0E0',
-                                        strokeWidth: 1
-                                    }
-                                }}
-                                style={styles.chart}
-                                showValuesOnTopOfBars={true}
-                                fromZero={true}
-                                withInnerLines={true}
-                                segments={4}
-                            />
+                                    <BarChart
+                                        data={chartData.barData}
+                                        width={Dimensions.get('window').width - 50}
+                                        height={220}
+                                        yAxisLabel=""
+                                        yAxisSuffix=""
+                                        chartConfig={{
+                                            backgroundColor: '#fff',
+                                            backgroundGradientFrom: '#fff',
+                                            backgroundGradientTo: '#fff',
+                                            decimalPlaces: 0,
+                                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                                            style: {
+                                                borderRadius: 16,
+                                            },
+                                        }}
+                                        style={styles.chart}
+                                    />
+                                </>
+                            ) : (
+                                <View style={styles.noDataContainer}>
+                                    <Text style={styles.noDataText}>Không có dữ liệu cho khoảng thời gian đã chọn</Text>
+                                </View>
+                            )}
                         </>
                     )}
                 </Animated.View>
@@ -595,7 +564,7 @@ const OrderStatistics = () => {
 
                             <TouchableOpacity
                                 style={styles.applyButton}
-                                onPress={() => setShowDateRangePicker(false)}
+                                onPress={handleApplyDateRange}
                             >
                                 <Text style={styles.applyButtonText}>Áp dụng</Text>
                             </TouchableOpacity>
@@ -975,6 +944,12 @@ const styles = StyleSheet.create({
         color: '#999',
         marginTop: 12,
         textAlign: 'center',
+    },
+    loader: {
+        marginVertical: 20,
+    },
+    contentLoader: {
+        marginVertical: 30,
     },
 })
 

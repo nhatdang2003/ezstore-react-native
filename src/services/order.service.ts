@@ -1,7 +1,17 @@
 import axios from '@/src/services/instance_axios';
 import { PaginatedResponse, Response } from '@/src/types/response.type';
 import { OrderReviewRequest, OrderReviewResponse } from '@/src/types/review.type';
-import { CheckoutRes, OrderDetailRes, OrderHistory, OrderPreviewReq, OrderPreviewRes } from '@/src/types/order.type';
+import {
+    CheckoutRes,
+    MonthlySpendingChartResponse,
+    OrderDetailRes,
+    OrderHistory,
+    OrderPreviewReq,
+    OrderPreviewRes,
+    OrderStatisticsSummaryRequest,
+    OrderStatisticsSummaryResponse,
+    StatusSpendingChartResponse
+} from '@/src/types/order.type';
 
 export const getOrderDetail = (orderId: number): Promise<Response<OrderDetailRes>> => {
     const url = `/api/v1/orders/user/${orderId}`
@@ -43,4 +53,19 @@ export const createOrderReview = (data: OrderReviewRequest): Promise<Response<Or
 export const updateOrderReview = (data: OrderReviewRequest): Promise<Response<OrderReviewResponse>> => {
     const url = `api/v1/orders/user/reviews`
     return axios.put(url, data)
+}
+
+export const getUserOrderStatistics = (data: OrderStatisticsSummaryRequest): Promise<Response<OrderStatisticsSummaryResponse>> => {
+    const url = `api/v1/orders/user/statistics`
+    return axios.post(url, data)
+}
+
+export const getUserOrderMonthlyChart = (data: OrderStatisticsSummaryRequest): Promise<Response<MonthlySpendingChartResponse>> => {
+    const url = `api/v1/orders/user/statistics/chart/line`
+    return axios.post(url, data)
+}
+
+export const getUserOrderStatusChart = (data: OrderStatisticsSummaryRequest): Promise<Response<StatusSpendingChartResponse>> => {
+    const url = `api/v1/orders/user/statistics/chart/bar`
+    return axios.post(url, data)
 }
