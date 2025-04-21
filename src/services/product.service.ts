@@ -1,6 +1,6 @@
 import axios from '@/src/services/instance_axios';
 import { PaginatedResponse, Response } from '@/src/types/response.type';
-import { Product, ProductQueryParams, ProductDetail } from '@/src/types/product.type';
+import { Product, ProductQueryParams, ProductDetail, ProductReview } from '@/src/types/product.type';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const VIEWED_PRODUCTS_KEY = 'viewed_products';
@@ -153,4 +153,24 @@ export const clearViewedProducts = async (): Promise<void> => {
     } catch (error) {
         console.error('Lỗi khi xóa lịch sử sản phẩm đã xem:', error);
     }
+};
+
+export const getProductReviews = async ({
+    slug,
+    rating,
+    page,
+    pageSize
+}: {
+    slug: string;
+    rating?: number;
+    page: number;
+    pageSize: number;
+}): Promise<PaginatedResponse<ProductReview>> => {
+    let url = `api/v1/products/${slug}/reviews?page=${page}&size=${pageSize}&sort=createdAt,desc`;
+
+    if (rating) {
+        url += `&rating=${rating}`;
+    }
+
+    return axios.get(url);
 };

@@ -1,14 +1,68 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native'
-import React, { useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native'
+import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
-import { AntDesign, Ionicons } from '@expo/vector-icons'
+import { useRouter, useLocalSearchParams } from 'expo-router'
+import { AntDesign, Ionicons, FontAwesome } from '@expo/vector-icons'
 import { FONT } from '@/src/constants/font'
+import { getProductReviews } from '@/src/services/product.service'
+import { formatDate } from '@/src/utils/date'
+import { ProductReview } from '@/src/types/product.type'
 
 const ReviewsProductScreen = () => {
     const router = useRouter()
+    const { slug } = useLocalSearchParams()
 
     const [activeFilter, setActiveFilter] = useState<number | null>(null)
+    const [reviews, setReviews] = useState<ProductReview[]>([])
+    const [loading, setLoading] = useState(false)
+    const [page, setPage] = useState(0)
+    const [hasMore, setHasMore] = useState(true)
+    const PAGE_SIZE = 10
+
+    useEffect(() => {
+        fetchReviews()
+    }, [activeFilter])
+
+    const fetchReviews = async (refresh = true) => {
+        if (loading || !slug) return
+
+        try {
+            setLoading(true)
+            const pageToFetch = refresh ? 0 : page
+
+            const response = await getProductReviews({
+                slug: slug as string,
+                rating: activeFilter !== null ? activeFilter : undefined,
+                page: pageToFetch,
+                pageSize: PAGE_SIZE
+            })
+
+            const responseData = response.data
+            const newReviews = responseData.data || []
+
+            if (refresh) {
+                setReviews(newReviews)
+                setPage(0)
+            } else {
+                setReviews([...reviews, ...newReviews])
+                setPage(pageToFetch + 1)
+            }
+
+            const totalPages = responseData.meta?.pages || 1
+            const currentPageNumber = responseData.meta?.page || 0
+            setHasMore(currentPageNumber < totalPages - 1)
+        } catch (error) {
+            console.error('Error fetching reviews:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const loadMoreReviews = () => {
+        if (!loading && hasMore) {
+            fetchReviews(false)
+        }
+    }
 
     const renderStars = (rating: number) => {
         const stars = [];
@@ -84,25 +138,76 @@ const ReviewsProductScreen = () => {
             </View>
 
             {/* Content */}
-            <ScrollView showsVerticalScrollIndicator={false}
-                style={styles.scrollView}>
-                <View style={styles.reviewItem}>
-                    <View style={styles.reviewHeader}>
-                        <View style={styles.userInfo}>
-                            <Image style={styles.userAvatar} />
-                            <Text style={styles.username}>Tên người dùng</Text>
-                        </View>
-                        <Text style={styles.reviewDate}>22/04/2025 1:52</Text>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.scrollView}
+                onScroll={({ nativeEvent }) => {
+                    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+                    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 20
+                    if (isCloseToBottom) {
+                        loadMoreReviews()
+                    }
+                }}
+                scrollEventThrottle={400}
+            >
+                {loading && page === 0 && (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#FFD700" />
                     </View>
-                    <View style={styles.ratingStars}>
-                        {renderStars(5)}
+                )}
+
+                {!loading && reviews.length === 0 && (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Chưa có đánh giá nào</Text>
                     </View>
-                    <Text style={styles.variantInfo}>Màu trắng, size L</Text>
-                    <Text style={styles.reviewContent}>
-                        Sản phẩm tốt, đáng để trải nghiệm Sản phẩm tốt, đáng để trải nghiệm
-                    </Text>
-                </View>
-                <View style={styles.divider} />
+                )}
+
+                {reviews.length > 0 && (
+                    reviews.map((review, index) => (
+                        <React.Fragment key={`review-${review.reviewId || index}`}>
+                            <View style={styles.reviewItem}>
+                                <View style={styles.reviewHeader}>
+                                    <View style={styles.userInfo}>
+                                        {review.avatar ? (
+                                            <Image
+                                                source={{ uri: review.avatar }}
+                                                style={styles.userAvatar}
+                                            />
+                                        ) : (
+                                            <View style={styles.userAvatar}>
+                                                <FontAwesome name="user" size={14} color="#666" />
+                                            </View>
+                                        )}
+                                        <Text style={styles.username}>
+                                            {review.firstName && review.lastName
+                                                ? `${review.firstName} ${review.lastName}`
+                                                : 'Người dùng ẩn danh'}
+                                        </Text>
+                                    </View>
+                                    <Text style={styles.reviewDate}>{formatDate(review.createdAt)}</Text>
+                                </View>
+                                <View style={styles.ratingStars}>
+                                    {renderStars(review.rating)}
+                                </View>
+                                {review.variant && (
+                                    <Text style={styles.variantInfo}>
+                                        {`Màu ${review.variant.color}, size ${review.variant.size}`}
+                                    </Text>
+                                )}
+                                <Text style={styles.reviewContent}>
+                                    {review.description}
+                                </Text>
+                            </View>
+                            {index < reviews.length - 1 && <View style={styles.divider} />}
+                        </React.Fragment>
+                    ))
+                )}
+
+                {loading && page > 0 && (
+                    <View style={styles.loadingMoreContainer}>
+                        <ActivityIndicator size="small" color="#FFD700" />
+                    </View>
+                )}
             </ScrollView>
         </SafeAreaView>
     )
@@ -151,11 +256,14 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     userAvatar: {
-        width: 20,
-        height: 20,
-        borderRadius: 50,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#f0f0f0',
         borderWidth: 1,
-        borderColor: "black",
+        borderColor: "#ddd",
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     username: {
         fontWeight: "500",
@@ -205,6 +313,25 @@ const styles = StyleSheet.create({
     activeFilterText: {
         color: "#fff",
     },
+    loadingContainer: {
+        paddingVertical: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadingMoreContainer: {
+        paddingVertical: 15,
+        alignItems: 'center',
+    },
+    emptyContainer: {
+        paddingVertical: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyText: {
+        fontSize: 16,
+        color: '#999',
+        fontFamily: FONT.LORA,
+    }
 })
 
 export default ReviewsProductScreen

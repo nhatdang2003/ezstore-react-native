@@ -61,3 +61,18 @@ export interface ProductDetail {
     variants: ProductVariant[];
     featured: boolean;
 }
+
+export interface ProductReview {
+    reviewId: number;
+    firstName: string | null;
+    lastName: string | null;
+    avatar: string | null;
+    rating: number;
+    createdAt: string;
+    variant: {
+        variantId: number;
+        color: string;
+        size: string;
+    };
+    description: string;
+}

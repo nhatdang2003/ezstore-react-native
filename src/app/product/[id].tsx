@@ -11,7 +11,7 @@ import {
     Dimensions,
     FlatList,
 } from "react-native";
-import { Ionicons, AntDesign } from "@expo/vector-icons";
+import { Ionicons, AntDesign, FontAwesome } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     getProductDetail,
@@ -20,11 +20,13 @@ import {
     addToViewedProducts,
     getViewedProductIds,
     getViewedProducts,
+    getProductReviews,
 } from "@/src/services/product.service";
 import {
     Product,
     ProductDetail,
     ProductVariant,
+    ProductReview,
 } from "@/src/types/product.type";
 import { useCartStore } from "@/src/store/cartStore";
 import { getUserCartInfo } from "@/src/services/user.service";
@@ -55,6 +57,8 @@ const ProductDetailScreen = () => {
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
     const [toastType, setToastType] = useState<"success" | "error">("success");
+    const [reviews, setReviews] = useState<ProductReview[]>([]);
+    const [loadingReviews, setLoadingReviews] = useState(false);
 
     const mainImageRef = useRef<FlatList>(null);
     const thumbnailRef = useRef<ScrollView>(null);
@@ -75,6 +79,28 @@ const ProductDetailScreen = () => {
 
                     // Thêm sản phẩm hiện tại vào danh sách đã xem
                     await addToViewedProducts(Number(id));
+
+                    // Lấy đánh giá sản phẩm
+                    if (productData.slug) {
+                        try {
+                            setLoadingReviews(true);
+                            const reviewsResponse = await getProductReviews({
+                                slug: productData.slug,
+                                rating: 5, // Chỉ lấy đánh giá 5 sao
+                                page: 0,   // Trang đầu tiên (index 0)
+                                pageSize: 2 // Hiển thị 2 đánh giá
+                            });
+
+                            if (reviewsResponse.statusCode === 200) {
+                                console.log(reviewsResponse.data.data)
+                                setReviews(reviewsResponse.data.data || []);
+                            }
+                        } catch (reviewError) {
+                            console.error("Lỗi khi lấy đánh giá sản phẩm:", reviewError);
+                        } finally {
+                            setLoadingReviews(false);
+                        }
+                    }
 
                     // Lấy danh sách ID sản phẩm đã xem từ AsyncStorage
                     const viewedIds = await getViewedProductIds();
@@ -170,6 +196,7 @@ const ProductDetailScreen = () => {
             setValidationError(null);
             setSelectedVariant(null);
             setDisplayImages([]);
+            setReviews([]);
         };
     }, [id]);
 
@@ -442,6 +469,38 @@ const ProductDetailScreen = () => {
         router.navigate("/(tabs)");
     };
 
+    // Render đánh giá sản phẩm
+    const renderReviewItem = (review: ProductReview) => (
+        <View key={review.reviewId} style={styles.reviewItem}>
+            <View style={styles.reviewHeader}>
+                <View style={styles.userInfo}>
+                    {review.avatar ? (
+                        <Image source={{ uri: review.avatar }} style={styles.userAvatar} />
+                    ) : (
+                        <View style={styles.userAvatar}>
+                            <FontAwesome name="user" size={14} color="#666" />
+                        </View>
+                    )}
+                    <Text style={styles.username}>
+                        {review.firstName ? `${review.firstName} ${review.lastName || ''}` : 'Người dùng ẩn danh'}
+                    </Text>
+                </View>
+                <Text style={styles.reviewDate}>
+                    {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                </Text>
+            </View>
+            <View style={styles.ratingStars}>
+                {renderStars(review.rating)}
+            </View>
+            <Text style={styles.variantInfo}>
+                {review.variant ? `${review.variant.color}, size ${review.variant.size}` : ''}
+            </Text>
+            <Text style={styles.reviewContent} ellipsizeMode="tail" numberOfLines={2}>
+                {review.description}
+            </Text>
+        </View>
+    );
+
     if (loading) {
         return (
             <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -688,50 +747,25 @@ const ProductDetailScreen = () => {
                     </TouchableOpacity>
                     {isReviewsExpanded && (
                         <>
-                            <View style={styles.reviewItem}>
-                                <View style={styles.reviewHeader}>
-                                    <View style={styles.userInfo}>
-                                        <Image style={styles.userAvatar} />
-                                        <Text style={styles.username}>Tên người dùng</Text>
-                                    </View>
-                                    <Text style={styles.reviewDate}>22/04/2025 1:52</Text>
-                                </View>
-                                <View style={styles.ratingStars}>
-                                    {renderStars(5)}
-                                </View>
-                                <Text style={styles.variantInfo}>Màu trắng, size L</Text>
-                                <Text style={styles.reviewContent} ellipsizeMode="tail" numberOfLines={2}>
-                                    Sản phẩm tốt, đáng để trải nghiệm Sản phẩm tốt, đáng để trải nghiệm
-                                </Text>
-                            </View>
-                            <View style={styles.divider} />
-
-                            <View style={styles.reviewItem}>
-                                <View style={styles.reviewHeader}>
-                                    <View style={styles.userInfo}>
-                                        <Image style={styles.userAvatar} />
-                                        <Text style={styles.username}>Tên người dùng</Text>
-                                    </View>
-                                    <Text style={styles.reviewDate}>22/04/2025 1:52</Text>
-                                </View>
-                                <View style={styles.ratingStars}>
-                                    {renderStars(5)}
-                                </View>
-                                <Text style={styles.variantInfo}>Màu trắng, size L</Text>
-                                <Text style={styles.reviewContent} ellipsizeMode="tail" numberOfLines={2}>
-                                    Sản phẩm tốt, đáng để trải nghiệm Sản phẩm tốt, đáng để trải nghiệm
-                                </Text>
-                            </View>
-                            <View style={styles.divider} />
-
-                            <TouchableOpacity style={styles.viewMoreButton}
-                                onPress={() => { router.push("/review/reviews_product") }}>
-                                <Text style={styles.viewMoreText}>
-                                    Xem thêm đánh giá
-                                </Text>
-                            </TouchableOpacity>
+                            {loadingReviews ? (
+                                <ActivityIndicator style={{ marginVertical: 20 }} color="#000" />
+                            ) : reviews.length === 0 ? (
+                                <Text style={styles.noReviewsText}>Chưa có đánh giá nào cho sản phẩm này</Text>
+                            ) : (
+                                <>
+                                    {reviews.map(renderReviewItem)}
+                                    <View style={styles.divider} />
+                                    <TouchableOpacity style={styles.viewMoreButton}
+                                        onPress={() => router.push(`/review/reviews_product?slug=${product?.slug}`)}>
+                                        <Text style={styles.viewMoreText}>
+                                            Xem thêm đánh giá
+                                        </Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
                         </>
                     )}
+
                     {/* Similar Products */}
                     {similarProducts.length > 0 && (
                         <View style={styles.similarProductsSection}>
@@ -1203,11 +1237,14 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     userAvatar: {
-        width: 20,
-        height: 20,
-        borderRadius: 50,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#f0f0f0',
         borderWidth: 1,
-        borderColor: "black",
+        borderColor: "#ddd",
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     username: {
         fontWeight: "500",
@@ -1237,6 +1274,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "500",
         textAlign: "center",
+    },
+    noReviewsText: {
+        textAlign: 'center',
+        marginVertical: 15,
+        fontSize: 14,
+        color: '#999',
     },
 });
 
