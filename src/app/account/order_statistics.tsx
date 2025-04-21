@@ -40,7 +40,6 @@ const OrderStatistics = () => {
     const today = new Date();
     const sixMonthsAgo = new Date(today);
     sixMonthsAgo.setMonth(today.getMonth() - 6);
-    sixMonthsAgo.setDate(1);
 
     const [startDate, setStartDate] = useState(sixMonthsAgo);
     const [endDate, setEndDate] = useState(today);
@@ -256,7 +255,7 @@ const OrderStatistics = () => {
                 >
                     <Ionicons name="chevron-back" size={24} color="black" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Thông tin đơn hàng</Text>
+                <Text style={styles.headerTitle}>Thống kê chi tiêu</Text>
                 <View style={styles.placeholder} />
             </View>
 
