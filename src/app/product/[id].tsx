@@ -92,7 +92,6 @@ const ProductDetailScreen = () => {
                             });
 
                             if (reviewsResponse.statusCode === 200) {
-                                console.log(reviewsResponse.data.data)
                                 setReviews(reviewsResponse.data.data || []);
                             }
                         } catch (reviewError) {

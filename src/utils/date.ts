@@ -22,6 +22,8 @@ export const formatDate = (dateString: string | number | Date): string => {
     if (!dateString) return '';
 
     const date = new Date(dateString);
+    // Adjust for GMT +7
+    date.setHours(date.getHours() + 7);
 
     if (isNaN(date.getTime())) {
         return '';
