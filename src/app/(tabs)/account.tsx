@@ -43,6 +43,7 @@ const AccountTab = () => {
                 <MenuButton icon="shopping" title="Đơn hàng"
                     onPress={() => { router.push('/account/orders') }} />
                 <MenuButton icon="star" title="Địa chỉ" onPress={() => { router.push('/account/address') }} />
+                <MenuButton icon="chart-bar" title="Thống kê" onPress={() => { router.push('/account/order_statistics') }} />
             </View>
 
 
