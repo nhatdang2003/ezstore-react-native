@@ -174,3 +174,16 @@ export const getProductReviews = async ({
 
     return axios.get(url);
 };
+
+export const getProductByIds = async ({
+    ids,
+    page,
+    pageSize
+}: {
+    ids: number[];
+    page: number;
+    pageSize: number;
+}): Promise<PaginatedResponse<ProductDetail>> => {
+    const url = `api/v1/products?filter=id in [${ids.join(',')}]&page=${page}&size=${pageSize}`;
+    return axios.get(url);
+}

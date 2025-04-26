@@ -16,3 +16,8 @@ export const markReadNotification = (id: number): Promise<Response<Notification>
     const url = `/api/v1/notifications/mark-read/${id}`
     return axios.put(url, id);
 }
+
+export const markReadAllNotification = (): Promise<Response<void>> => {
+    const url = `/api/v1/notifications/mark-read-all`
+    return axios.post(url);
+}

@@ -13,9 +13,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { COLOR } from '@/src/constants/color';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { getNotifications, markReadNotification } from '@/src/services/notification.service';
+import { getNotifications, markReadNotification, markReadAllNotification } from '@/src/services/notification.service';
 import { Notification } from '@/src/types/notification.type';
 import { useNotificationStore } from '@/src/store/notificationStore';
+import ConfirmDialog from '@/src/components/ConfirmModal';
 
 // Hàm hỗ trợ định dạng thời gian
 const formatTimestamp = (dateString: string) => {
@@ -41,6 +42,8 @@ const NotificationScreen = () => {
     const [loading, setLoading] = useState(true);
     const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
     const decrementUnreadCount = useNotificationStore(state => state.decrementUnreadCount);
+    const unreadCount = useNotificationStore(state => state.unreadCount);
+    const [confirmVisible, setConfirmVisible] = useState(false);
 
     const fetchNotifications = async () => {
         setLoading(true);
@@ -60,7 +63,7 @@ const NotificationScreen = () => {
     useFocusEffect(
         useCallback(() => {
             fetchNotifications();
-        }, [])
+        }, [unreadCount])
     );
 
     const handleNotificationPress = async (notification: Notification) => {
@@ -79,17 +82,45 @@ const NotificationScreen = () => {
             }
 
             // Navigate based on notification type
-            if (notification.type === 'ORDER_STATUS_UPDATED' && notification.referenceId) {
+            if (notification.type === 'ORDER_STATUS_UPDATED' && notification.referenceIds) {
+
                 router.navigate({
                     pathname: "/account/order_details",
-                    params: { orderId: notification.referenceId }
+                    params: { orderId: Number(notification.referenceIds.split(',')[0]) }
                 });
             } else if (notification.type === 'PROMOTION_NOTIFICATION') {
-                router.navigate(`/notification/promo_campaign`);
+                router.navigate({
+                    pathname: "/notification/promo_campaign",
+                    params: {
+                        notification: JSON.stringify(notification)
+                    }
+                });
             }
         } catch (error) {
             console.error('Error marking notification as read:', error);
         }
+    };
+
+    const handleMarkAllAsRead = async () => {
+        try {
+            await markReadAllNotification();
+            // Update local state
+            setNotifications(prev =>
+                prev.map(item => ({ ...item, read: true }))
+            );
+            // Reset unread count
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+        }
+    };
+
+    const showConfirmDialog = () => {
+        setConfirmVisible(true);
+    };
+
+    const hideConfirmDialog = () => {
+        setConfirmVisible(false);
     };
 
     const renderNotificationItem = ({ item }: { item: Notification }) => {
@@ -152,6 +183,15 @@ const NotificationScreen = () => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <ConfirmDialog
+                visible={confirmVisible}
+                message="Bạn có muốn đánh dấu tất cả thông báo là đã đọc?"
+                onCancel={hideConfirmDialog}
+                onConfirm={() => {
+                    hideConfirmDialog();
+                    handleMarkAllAsRead();
+                }}
+            />
             {notifications.length > 0 ? (
                 <FlatList
                     showsVerticalScrollIndicator={false}
@@ -161,9 +201,16 @@ const NotificationScreen = () => {
                     contentContainerStyle={styles.listContainer}
                     ListHeaderComponent={() => (
                         <View style={styles.listHeader}>
-                            <Text style={styles.listHeaderText}>
-                                {notifications.filter(n => !n.read).length} thông báo chưa đọc
-                            </Text>
+                            <View style={styles.headerRow}>
+                                <Text style={styles.listHeaderText}>
+                                    {notifications.filter(n => !n.read).length} thông báo chưa đọc
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={showConfirmDialog}
+                                >
+                                    <Text style={styles.markAllText}>Đọc tất cả</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
                     ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -301,6 +348,16 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#757575',
         textAlign: 'center',
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    markAllText: {
+        color: COLOR.PRIMARY,
+        fontSize: 14,
+        fontWeight: '500',
     },
 });
 

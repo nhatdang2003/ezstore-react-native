@@ -43,6 +43,8 @@ export const connectWebSocket = async () => {
 
             // Subscribe to user-specific notifications
             stompClient?.subscribe('/user/queue/notifications', onNotificationReceived);
+
+            stompClient?.subscribe("/topic/promotions", onPromotionReceived);
         };
 
         stompClient.onStompError = (frame) => {
