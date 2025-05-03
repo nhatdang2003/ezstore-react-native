@@ -41,6 +41,7 @@ const NotificationScreen = () => {
     const [loading, setLoading] = useState(true);
     const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
     const decrementUnreadCount = useNotificationStore(state => state.decrementUnreadCount);
+    const unreadCount = useNotificationStore(state => state.unreadCount);
 
     const fetchNotifications = async () => {
         setLoading(true);
@@ -60,7 +61,7 @@ const NotificationScreen = () => {
     useFocusEffect(
         useCallback(() => {
             fetchNotifications();
-        }, [])
+        }, [unreadCount])
     );
 
     const handleNotificationPress = async (notification: Notification) => {

@@ -399,7 +399,6 @@ const styles = StyleSheet.create({
     },
     pickerContainer: {
         borderRadius: 8,
-        marginVertical: 8
     },
     buttonContainer: {
         flexDirection: 'row',
