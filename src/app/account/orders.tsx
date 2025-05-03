@@ -254,22 +254,40 @@ const OrderHistoryScreen = () => {
                     {/* Action buttons */}
                     <View style={styles.actionRow}>
                         {order.canReview && !order.isReviewed && activeTab === "DELIVERED" && (
-                            <CustomButton
-                                variant="outlined"
-                                title="Đánh giá"
-                                onPress={() => { router.navigate(`/account/reviews?orderId=${order.id}`) }}
-                                style={styles.reviewButton}
-                                textStyle={styles.reviewButtonText}
-                            />
+                            <>
+                                <CustomButton
+                                    variant="filled"
+                                    title="Hoàn trả"
+                                    onPress={() => { router.navigate(`/account/reviews?orderId=${order.id}`) }}
+                                    style={styles.returnButton}
+                                    textStyle={styles.returnButtonText}
+                                />
+                                <CustomButton
+                                    variant="outlined"
+                                    title="Đánh giá"
+                                    onPress={() => { router.navigate(`/account/reviews?orderId=${order.id}`) }}
+                                    style={styles.reviewButton}
+                                    textStyle={styles.reviewButtonText}
+                                />
+                            </>
                         )}
                         {order.isReviewed && activeTab === "DELIVERED" && (
-                            <CustomButton
-                                variant="outlined"
-                                title="Xem đánh giá"
-                                onPress={() => { router.navigate(`/account/list-review?orderId=${order.id}`) }}
-                                style={styles.reviewButton}
-                                textStyle={styles.reviewButtonText}
-                            />
+                            <>
+                                <CustomButton
+                                    variant="filled"
+                                    title="Hoàn trả"
+                                    onPress={() => { router.navigate(`/account/return_form`) }}
+                                    style={styles.returnButton}
+                                    textStyle={styles.returnButtonText}
+                                />
+                                <CustomButton
+                                    variant="outlined"
+                                    title="Xem đánh giá"
+                                    onPress={() => { router.navigate(`/account/list-review?orderId=${order.id}`) }}
+                                    style={styles.reviewButton}
+                                    textStyle={styles.reviewButtonText}
+                                />
+                            </>
                         )}
                     </View>
 
@@ -534,6 +552,14 @@ const styles = StyleSheet.create({
     },
     reviewButtonText: {
         color: "#333",
+        fontSize: 14,
+    },
+    returnButton: {
+        paddingVertical: 10,
+        backgroundColor: COLOR.PRIMARY,
+    },
+    returnButtonText: {
+        color: "#fff",
         fontSize: 14,
     },
     showMoreButton: {
