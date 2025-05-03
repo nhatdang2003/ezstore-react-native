@@ -7,8 +7,9 @@ export interface Notification {
     | 'PROMOTION_NOTIFICATION';
     read: boolean;
     notificationDate: string;
-    referenceId: number;
-    imageUrl: string;
+    referenceIds: string;
+    startPromotionDate: string;
+    endPromotionDate: string;
 }
 
 export interface NotificationsResponse {

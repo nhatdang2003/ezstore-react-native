@@ -47,6 +47,8 @@ export const connectWebSocket = async () => {
         "/user/queue/notifications",
         onNotificationReceived
       );
+
+      stompClient?.subscribe("/topic/promotions", onPromotionReceived);
     };
 
     stompClient.onStompError = (frame) => {
