@@ -120,6 +120,7 @@ export interface OrderDetailRes {
     isReviewed: boolean;
     cancelReason: string | null;
     shippingProfile: ShippingProfile;
+    statusUpdateTimestamp: string;
 }
 
 export interface OrderStatisticsSummaryRequest {

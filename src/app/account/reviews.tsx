@@ -364,6 +364,13 @@ export default function ProductReviewScreen() {
                 <View />
             </View>
 
+            {!isEditMode && (
+                <View style={styles.rewardNotice}>
+                    <FontAwesome name="star" size={16} color="#FFB800" style={{ marginRight: 5 }} />
+                    <Text style={styles.rewardText}>Đánh giá để nhận <Text style={{ fontWeight: 'bold', color: '#FFB800' }}>200 điểm</Text> !</Text>
+                </View>
+            )}
+
             {isLoading ? (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={COLOR.PRIMARY} />
@@ -705,6 +712,16 @@ const styles = StyleSheet.create({
     },
     uploadOptionTextDisabled: {
         color: '#ccc',
+    },
+    rewardNotice: {
+        padding: 12,
+        backgroundColor: '#FFF9E5',
+        borderBottomColor: '#FFE49D',
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    rewardText: {
+        fontSize: 14,
     },
 })
 

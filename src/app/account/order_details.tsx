@@ -20,6 +20,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { getOrderDetail } from "@/src/services/order.service";
 import { OrderDetailRes, OrderLineItem } from "@/src/types/order.type";
 import { formatPrice } from "@/src/utils/product";
+import { formatDateString } from "@/src/utils/date";
 
 export default function OrderDetails() {
     const { orderId } = useLocalSearchParams();
@@ -124,7 +125,7 @@ export default function OrderDetails() {
 
                     <View style={styles.deliveryStatusRow}>
                         <Text style={styles.deliveryStatus}>{getStatusText(orderDetail.status)}</Text>
-                        {/* <Text style={styles.deliveryDate}>{new Date(orderDetail.orderDate).toLocaleString('vi-VN')}</Text> */}
+                        <Text style={styles.deliveryDate}>{formatDateString(orderDetail.statusUpdateTimestamp)}</Text>
                     </View>
                 </View>
 
