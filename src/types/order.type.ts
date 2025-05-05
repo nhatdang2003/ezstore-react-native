@@ -94,6 +94,7 @@ export interface OrderHistory {
     canReview: boolean;
     isReviewed: boolean;
     cancelReason: string | null;
+    statusUpdateTimestamp: string;
 }
 
 export interface OrderDetailRes {

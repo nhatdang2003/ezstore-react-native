@@ -153,6 +153,32 @@ const OrderHistoryScreen = () => {
         }));
     }, []);
 
+    // Add a function to check if an order is eligible for return (within 30 days)
+    const isEligibleForReturn = useCallback((order: OrderHistory) => {
+        // If the order isn't DELIVERED, return false
+        if (order.status !== "DELIVERED") {
+            return false;
+        }
+
+        // Check if statusUpdateTimestamp is available
+        if (!order.statusUpdateTimestamp) {
+            return false;
+        }
+
+        // Get the timestamp of the status update
+        const statusUpdateDate = new Date(order.statusUpdateTimestamp);
+        const currentDate = new Date();
+
+        // Calculate the difference in milliseconds
+        const diffTime = currentDate.getTime() - statusUpdateDate.getTime();
+
+        // Convert to days
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        // Check if it's within 30 days
+        return diffDays <= 30;
+    }, []);
+
     const OrderItem = memo(
         ({ order }: { order: OrderHistory }) => {
             // Quản lý trạng thái mở rộng trong chính component này
@@ -165,11 +191,21 @@ const OrderHistoryScreen = () => {
 
             // Navigate to order details with order id
             const navigateToDetails = () => {
-                router.navigate({
-                    pathname: "/account/order_details",
-                    params: { orderId: order.id }
-                });
+                if (order.status === "RETURNED") {
+                    router.navigate({
+                        pathname: "/account/returned_order",
+                        params: { orderId: order.id }
+                    });
+                } else {
+                    router.navigate({
+                        pathname: "/account/order_details",
+                        params: { orderId: order.id }
+                    });
+                }
             };
+
+            // Check if the order is eligible for return
+            const eligibleForReturn = isEligibleForReturn(order);
 
             return (
                 <TouchableOpacity
@@ -253,23 +289,36 @@ const OrderHistoryScreen = () => {
 
                     {/* Action buttons */}
                     <View style={styles.actionRow}>
-                        {order.canReview && !order.isReviewed && activeTab === "DELIVERED" && (
-                            <CustomButton
-                                variant="outlined"
-                                title="Đánh giá"
-                                onPress={() => { router.navigate(`/account/reviews?orderId=${order.id}`) }}
-                                style={styles.reviewButton}
-                                textStyle={styles.reviewButtonText}
-                            />
-                        )}
-                        {order.isReviewed && activeTab === "DELIVERED" && (
-                            <CustomButton
-                                variant="outlined"
-                                title="Xem đánh giá"
-                                onPress={() => { router.navigate(`/account/list-review?orderId=${order.id}`) }}
-                                style={styles.reviewButton}
-                                textStyle={styles.reviewButtonText}
-                            />
+                        {activeTab === "DELIVERED" && (
+                            <>
+                                {eligibleForReturn && (
+                                    <CustomButton
+                                        variant="filled"
+                                        title="Hoàn trả"
+                                        onPress={() => { router.navigate(`/account/return_form?orderId=${order.id}`) }}
+                                        style={styles.returnButton}
+                                        textStyle={styles.returnButtonText}
+                                    />
+                                )}
+
+                                {order.canReview && !order.isReviewed ? (
+                                    <CustomButton
+                                        variant="outlined"
+                                        title="Đánh giá"
+                                        onPress={() => { router.navigate(`/account/reviews?orderId=${order.id}`) }}
+                                        style={styles.reviewButton}
+                                        textStyle={styles.reviewButtonText}
+                                    />
+                                ) : order.isReviewed && (
+                                    <CustomButton
+                                        variant="outlined"
+                                        title="Xem đánh giá"
+                                        onPress={() => { router.navigate(`/account/list-review?orderId=${order.id}`) }}
+                                        style={styles.reviewButton}
+                                        textStyle={styles.reviewButtonText}
+                                    />
+                                )}
+                            </>
                         )}
                     </View>
 
@@ -534,6 +583,14 @@ const styles = StyleSheet.create({
     },
     reviewButtonText: {
         color: "#333",
+        fontSize: 14,
+    },
+    returnButton: {
+        paddingVertical: 10,
+        backgroundColor: COLOR.PRIMARY,
+    },
+    returnButtonText: {
+        color: "#fff",
         fontSize: 14,
     },
     showMoreButton: {

@@ -21,7 +21,7 @@ const CustomButton = ({
     children,
     title,
     variant = 'filled',
-    size = 'medium',
+    size = 'small',
     disabled = false,
     style,
     textStyle,
