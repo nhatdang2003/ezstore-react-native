@@ -19,8 +19,11 @@ import { STATUS_ORDER } from "@/src/constants/order";
 import { formatPrice } from "@/src/utils/product";
 import CustomButton from "@/src/components/CustomButton";
 import { OrderHistory } from "@/src/types/order.type";
-import { getOrderHistoryUser } from "@/src/services/order.service";
+import { getOrderHistoryUser, cancelOrder } from "@/src/services/order.service";
 import { useFocusEffect } from "expo-router";
+import CancelOrderModal from "@/src/components/CancelOrderModal";
+import AlertDialog from "@/src/components/AlertModal";
+import ConfirmDialog from "@/src/components/ConfirmModal";
 
 const OrderHistoryScreen = () => {
     const [activeTab, setActiveTab] = useState<string>(STATUS_ORDER[0].value);
@@ -68,6 +71,18 @@ const OrderHistoryScreen = () => {
     const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>(
         {}
     );
+
+    // States for modals
+    const [cancelModalVisible, setCancelModalVisible] = useState(false);
+    const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+    const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<OrderHistory | null>(null);
+    const [cancellingOrder, setCancellingOrder] = useState(false);
+    const [selectedReason, setSelectedReason] = useState<string>('');
+
+    // Add states for alert messages
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertTitle, setAlertTitle] = useState('');
 
     // Cải thiện hàm fetchData để xử lý trùng lặp
     const fetchData = useCallback(async (isRefreshing = false) => {
@@ -177,6 +192,89 @@ const OrderHistoryScreen = () => {
 
         // Check if it's within 30 days
         return diffDays <= 30;
+    }, []);
+
+    // Show alert function
+    const showAlert = (title: string, message: string) => {
+        setAlertTitle(title);
+        setAlertMessage(message);
+        setAlertVisible(true);
+    };
+
+    // Function to handle the selection of a reason and showing confirmation
+    const handleReasonSelected = useCallback((reason: string) => {
+        setSelectedReason(reason);
+        setCancelModalVisible(false);
+        setConfirmModalVisible(true);
+    }, []);
+
+    // Add this function to handle order cancellation (final step after confirmation)
+    const handleCancelOrder = useCallback(async () => {
+        if (!selectedOrderForCancel || !selectedReason) return;
+
+        setCancellingOrder(true);
+        try {
+            await cancelOrder({
+                orderId: selectedOrderForCancel.id,
+                reason: selectedReason
+            });
+
+            // Update UI with properly typed status
+            setOrders(prev => {
+                const status = activeTab;
+                const updatedOrders = prev[status].map(order => {
+                    if (order.id === selectedOrderForCancel.id) {
+                        // Explicitly cast the new status as the correct type
+                        return {
+                            ...order,
+                            status: "CANCELLED" as "PENDING" | "PROCESSING" | "SHIPPING" | "DELIVERED" | "CANCELLED" | "RETURNED",
+                            cancelReason: selectedReason
+                        };
+                    }
+                    return order;
+                });
+                return { ...prev, [status]: updatedOrders };
+            });
+
+            // Show success message using AlertDialog
+            showAlert("Thành công", "Đã hủy đơn hàng thành công");
+
+            // Reset state after successful cancellation
+            setConfirmModalVisible(false);
+            setSelectedOrderForCancel(null);
+            setSelectedReason('');
+
+            // Refresh the orders list
+            setPage(prev => ({ ...prev, [activeTab]: 0 }));
+            setOrders(prev => ({ ...prev, [activeTab]: [] }));
+            setHasMore(prev => ({ ...prev, [activeTab]: true }));
+            setTimeout(() => {
+                fetchData(true);
+            }, 500);
+
+        } catch (error) {
+            console.error("Error cancelling order:", error);
+
+            // Show error message using AlertDialog
+            showAlert("Lỗi", "Không thể hủy đơn hàng");
+        } finally {
+            setCancellingOrder(false);
+            setConfirmModalVisible(false);
+        }
+    }, [selectedOrderForCancel, selectedReason, activeTab, fetchData]);
+
+    // Open the cancel modal (first step)
+    const openCancelModal = useCallback((order: OrderHistory) => {
+        setSelectedOrderForCancel(order);
+        setCancelModalVisible(true);
+    }, []);
+
+    // Reset all modal states
+    const resetModalStates = useCallback(() => {
+        setCancelModalVisible(false);
+        setConfirmModalVisible(false);
+        setSelectedOrderForCancel(null);
+        setSelectedReason('');
     }, []);
 
     const OrderItem = memo(
@@ -289,6 +387,18 @@ const OrderHistoryScreen = () => {
 
                     {/* Action buttons */}
                     <View style={styles.actionRow}>
+                        {order.status === "PENDING" && (
+                            <CustomButton
+                                variant="outlined"
+                                title="Hủy đơn"
+                                onPress={() => {
+                                    openCancelModal(order);
+                                }}
+                                style={styles.cancelButton}
+                                textStyle={styles.cancelButtonText}
+                            />
+                        )}
+
                         {activeTab === "DELIVERED" && (
                             <>
                                 {eligibleForReturn && (
@@ -449,6 +559,41 @@ const OrderHistoryScreen = () => {
                 // Bật memoization cho items
                 removeClippedSubviews={true}
                 updateCellsBatchingPeriod={100}
+            />
+
+            {/* Cancel Order Modal (shown first) */}
+            <CancelOrderModal
+                visible={cancelModalVisible}
+                onClose={() => {
+                    setCancelModalVisible(false);
+                    setSelectedOrderForCancel(null);
+                }}
+                onConfirm={handleReasonSelected}
+                isLoading={false}
+            />
+
+            {/* Confirm Dialog (shown after reason selection) */}
+            <ConfirmDialog
+                visible={confirmModalVisible}
+                message={`Bạn có chắc chắn muốn hủy đơn hàng này với lý do "${selectedReason}" không?`}
+                onCancel={resetModalStates}
+                onConfirm={handleCancelOrder}
+            />
+
+            {/* Show loading indicator during cancellation */}
+            {cancellingOrder && (
+                <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size="large" color={COLOR.PRIMARY} />
+                    <Text style={styles.loadingText}>Đang hủy đơn hàng...</Text>
+                </View>
+            )}
+
+            {/* Alert Modal */}
+            <AlertDialog
+                visible={alertVisible}
+                title={alertTitle}
+                message={alertMessage}
+                onClose={() => setAlertVisible(false)}
             />
         </SafeAreaView>
     );
@@ -632,6 +777,32 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: "#F0F0F0",
+    },
+    cancelButton: {
+        paddingVertical: 10,
+        borderColor: COLOR.PRIMARY,
+        borderWidth: 1,
+    },
+    cancelButtonText: {
+        color: COLOR.PRIMARY,
+        fontSize: 14,
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+    },
+    loadingText: {
+        color: 'white',
+        marginTop: 12,
+        fontSize: 16,
+        fontFamily: FONT.LORA_MEDIUM,
     },
 });
 

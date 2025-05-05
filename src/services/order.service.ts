@@ -2,6 +2,7 @@ import axios from '@/src/services/instance_axios';
 import { PaginatedResponse, Response } from '@/src/types/response.type';
 import { OrderReviewRequest, OrderReviewResponse } from '@/src/types/review.type';
 import {
+    cancelOrderReq,
     CheckoutRes,
     MonthlySpendingChartResponse,
     OrderDetailRes,
@@ -68,4 +69,9 @@ export const getUserOrderMonthlyChart = (data: OrderStatisticsSummaryRequest): P
 export const getUserOrderStatusChart = (data: OrderStatisticsSummaryRequest): Promise<Response<StatusSpendingChartResponse>> => {
     const url = `api/v1/orders/user/statistics/chart/bar`
     return axios.post(url, data)
+}
+
+export const cancelOrder = (data: cancelOrderReq): Promise<Response<void>> => {
+    const url = `/api/v1/orders/user/cancel`
+    return axios.put(url, data)
 }

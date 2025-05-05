@@ -165,3 +165,8 @@ export interface StatusSpendingChartResponse {
     shipping: number;
     delivered: number;
 }
+
+export interface cancelOrderReq {
+    orderId: number;
+    reason: string;
+}
