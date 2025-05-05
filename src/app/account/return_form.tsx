@@ -10,22 +10,61 @@ import {
     Platform,
     Alert,
     TextInput,
+    ActivityIndicator,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLOR } from "@/src/constants/color";
 import * as Clipboard from 'expo-clipboard';
 import { FONT } from "@/src/constants/font";
-import { router } from "expo-router";
-import React, { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useState, useEffect } from "react";
 import * as ImagePicker from 'expo-image-picker';
+import { getOrderDetail } from "@/src/services/order.service";
+import { createReturnRequest, uploadReturnRequestImage } from "@/src/services/return-request.service";
+import { OrderDetailRes } from "@/src/types/order.type";
+import { formatPrice } from "@/src/utils/product";
 
 export default function ReturnFormScreen() {
+    const { orderId } = useLocalSearchParams<{ orderId: string }>();
     const [bankName, setBankName] = useState('');
     const [cardHolderName, setCardHolderName] = useState('');
     const [cardNumber, setCardNumber] = useState('');
     const [reason, setReason] = useState('');
     const [attachedImages, setAttachedImages] = useState<string[]>([]);
+    const [orderDetails, setOrderDetails] = useState<OrderDetailRes | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Fetch order details when component mounts
+    useEffect(() => {
+        const fetchOrderDetails = async () => {
+            if (!orderId) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await getOrderDetail(Number(orderId));
+                setOrderDetails(response.data);
+            } catch (error) {
+                console.error("Error fetching order details:", error);
+                // Show error message
+                if (Platform.OS === "android") {
+                    ToastAndroid.show(
+                        "Không thể lấy thông tin đơn hàng",
+                        ToastAndroid.SHORT
+                    );
+                } else {
+                    Alert.alert("Lỗi", "Không thể lấy thông tin đơn hàng");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrderDetails();
+    }, [orderId]);
 
     // Function to pick images from gallery
     const pickImages = async () => {
@@ -82,6 +121,156 @@ export default function ReturnFormScreen() {
         setAttachedImages(updatedImages);
     };
 
+    // Helper function to get filename from URI
+    const getFilenameFromUri = (uri: string) => {
+        // Extract the filename from the URI 
+        const uriParts = uri.split('/');
+        const filename = uriParts[uriParts.length - 1];
+
+        // Make sure we have a valid extension or add one
+        if (!filename.includes('.')) {
+            return `${filename}.jpg`;
+        }
+
+        return filename;
+    };
+
+    // Function to upload a single image using signed URL
+    const uploadImageToStorage = async (imageUri: string, signedUrl: string): Promise<boolean> => {
+        try {
+            // Get the image data
+            const response = await fetch(imageUri);
+            const blob = await response.blob();
+
+            // Upload to Google Storage using the signed URL
+            await fetch(signedUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: {
+                    'Content-Type': 'image/jpeg',
+                }
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            return false;
+        }
+    };
+
+    // Function to handle form submission
+    const handleSubmit = async () => {
+        if (!orderDetails) {
+            if (Platform.OS === "android") {
+                ToastAndroid.show(
+                    "Không tìm thấy thông tin đơn hàng",
+                    ToastAndroid.SHORT
+                );
+            } else {
+                Alert.alert("Lỗi", "Không tìm thấy thông tin đơn hàng");
+            }
+            return;
+        }
+
+        if (!bankName || !cardHolderName || !cardNumber || !reason) {
+            if (Platform.OS === "android") {
+                ToastAndroid.show(
+                    "Vui lòng điền đầy đủ thông tin",
+                    ToastAndroid.SHORT
+                );
+            } else {
+                Alert.alert("Thông báo", "Vui lòng điền đầy đủ thông tin");
+            }
+            return;
+        }
+
+        setSubmitting(true);
+
+        try {
+            // Array to store the Google Storage URLs
+            const imageUrls: string[] = [];
+
+            // Process each image
+            if (attachedImages.length > 0) {
+                // Get signed URLs for each image and upload them
+                await Promise.all(
+                    attachedImages.map(async (imageUri) => {
+                        try {
+                            // Get filename from URI
+                            const filename = getFilenameFromUri(imageUri);
+
+                            // Get signed URL from API
+                            const signedUrlResponse = await uploadReturnRequestImage({ fileName: filename });
+                            const { signedUrl } = signedUrlResponse.data;
+
+                            // Upload the image to Google Storage
+                            const uploadSuccess = await uploadImageToStorage(imageUri, signedUrl);
+
+                            if (uploadSuccess) {
+                                // Extract the public URL from the signed URL (removing query parameters)
+                                const publicUrl = signedUrl.split('?')[0];
+                                imageUrls.push(publicUrl);
+                            }
+                        } catch (error) {
+                            console.error('Error processing image:', error);
+                        }
+                    })
+                );
+            }
+
+            // Create return request with uploaded image URLs
+            const returnRequestData = {
+                orderId: orderDetails.id,
+                reason: reason,
+                bankName: bankName,
+                accountNumber: cardNumber,
+                accountHolderName: cardHolderName,
+                imageUrls: imageUrls, // Use the array of uploaded image URLs
+            };
+
+            const response = await createReturnRequest(returnRequestData);
+
+            if (Platform.OS === "android") {
+                ToastAndroid.show(
+                    "Đã gửi yêu cầu hoàn trả thành công",
+                    ToastAndroid.SHORT
+                );
+            } else {
+                Alert.alert("Thành công", "Đã gửi yêu cầu hoàn trả thành công");
+            }
+
+            // Navigate to returned order screen with the new return request id
+            router.replace({
+                pathname: "/account/returned_order",
+                params: {
+                    orderId: orderDetails.id,
+                    returnRequestId: response.data.id
+                }
+            });
+        } catch (error) {
+            console.error("Error creating return request:", error);
+            if (Platform.OS === "android") {
+                ToastAndroid.show(
+                    "Lỗi khi gửi yêu cầu hoàn trả",
+                    ToastAndroid.SHORT
+                );
+            } else {
+                Alert.alert("Lỗi", "Lỗi khi gửi yêu cầu hoàn trả");
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color={COLOR.PRIMARY} />
+                <Text style={styles.loadingText}>Đang tải thông tin đơn hàng...</Text>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container}>
             {/* Header */}
@@ -102,13 +291,13 @@ export default function ReturnFormScreen() {
                     <View style={styles.orderIdRow}>
                         <Text style={styles.orderIdLabel}>Mã đơn hàng</Text>
                         <View style={styles.orderIdValue}>
-                            <Text style={styles.orderId}>250314K01X5SU7</Text>
+                            <Text style={styles.orderId}>{orderDetails?.code || 'N/A'}</Text>
                             <TouchableOpacity
                                 style={styles.copyButton}
                                 onPress={async () => {
-                                    const orderId = "250314K01X5SU7";
+                                    if (!orderDetails?.code) return;
 
-                                    await Clipboard.setStringAsync(orderId);
+                                    await Clipboard.setStringAsync(orderDetails.code);
                                     // Show feedback based on platform
                                     if (Platform.OS === "android") {
                                         ToastAndroid.show(
@@ -131,7 +320,7 @@ export default function ReturnFormScreen() {
                         <Text style={styles.paymentLabel}>Phương thức thanh toán</Text>
                         <View style={styles.paymentValue}>
                             <Text style={styles.paymentMethod}>
-                                Thanh toán khi nhận hàng
+                                {orderDetails?.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng' : 'VNPAY'}
                             </Text>
                         </View>
                     </View>
@@ -139,43 +328,65 @@ export default function ReturnFormScreen() {
 
                 {/* Product Information */}
                 <View style={styles.card}>
-                    <TouchableOpacity style={styles.storeRow}>
-                        <View style={styles.storeInfo}>
-                            <Text style={styles.storeName}>Baseus Official Mall</Text>
-                        </View>
-                        <Feather name="chevron-right" size={20} color="#AAAAAA" />
-                    </TouchableOpacity>
+                    {orderDetails?.lineItems && orderDetails.lineItems.length > 0 && (
+                        <>
+                            <TouchableOpacity style={styles.storeRow}>
+                                <View style={styles.storeInfo}>
+                                    <Text style={styles.storeName}>EZ Store</Text>
+                                </View>
+                                <Feather name="chevron-right" size={20} color="#AAAAAA" />
+                            </TouchableOpacity>
 
-                    <View style={styles.divider} />
+                            <View style={styles.divider} />
 
-                    <View style={styles.productRow}>
-                        <Image
-                            source={{
-                                uri: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/2366451c-9ea3-4dd0-b454-ab0c6454f354.jpg-CPLbbbMNG52r3dHe5kdLJ1PniWunyh.jpeg",
-                            }}
-                            style={styles.productImage}
-                        />
-                        <View style={styles.productDetails}>
-                            <Text style={styles.productName} numberOfLines={2}>
-                                Cáp Sạc Nhanh Baseus Cổng USB C Sang 2...
-                            </Text>
-                            <Text style={styles.productVariant}>M Black</Text>
-                            <View style={styles.quantityPriceRow}>
-                                <Text style={styles.quantity}>x1</Text>
-                                <View style={styles.priceContainer}>
-                                    <Text style={styles.originalPrice}>₫218.000</Text>
-                                    <Text style={styles.discountedPrice}>₫109.000</Text>
+                            {/* Render the first product */}
+                            <View style={styles.productRow}>
+                                <Image
+                                    source={{
+                                        uri: orderDetails.lineItems[0].variantImage || "https://via.placeholder.com/80",
+                                    }}
+                                    style={styles.productImage}
+                                />
+                                <View style={styles.productDetails}>
+                                    <Text style={styles.productName} numberOfLines={2}>
+                                        {orderDetails.lineItems[0].productName}
+                                    </Text>
+                                    <Text style={styles.productVariant}>
+                                        {orderDetails.lineItems[0].color} {orderDetails.lineItems[0].size}
+                                    </Text>
+                                    <View style={styles.quantityPriceRow}>
+                                        <Text style={styles.quantity}>x{orderDetails.lineItems[0].quantity}</Text>
+                                        <View style={styles.priceContainer}>
+                                            {orderDetails.lineItems[0].discount > 0 && (
+                                                <Text style={styles.originalPrice}>
+                                                    {formatPrice(orderDetails.lineItems[0].unitPrice)}
+                                                </Text>
+                                            )}
+                                            <Text style={styles.discountedPrice}>
+                                                {formatPrice(orderDetails.lineItems[0].unitPrice - orderDetails.lineItems[0].discount)}
+                                            </Text>
+                                        </View>
+                                    </View>
                                 </View>
                             </View>
-                        </View>
-                    </View>
 
-                    <View style={styles.divider} />
+                            {/* Show more products indicator if there are more than one */}
+                            {orderDetails.lineItems.length > 1 && (
+                                <View style={styles.moreProductsIndicator}>
+                                    <Text style={styles.moreProductsText}>
+                                        Còn {orderDetails.lineItems.length - 1} sản phẩm khác
+                                    </Text>
+                                </View>
+                            )}
 
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                        <Text>Tổng tiền:</Text>
-                        <Text style={{ fontWeight: 500 }}>109.000đ</Text>
-                    </View>
+                            <View style={styles.divider} />
+
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                                <Text>Tổng tiền:</Text>
+                                <Text style={{ fontWeight: "500" }}>{formatPrice(orderDetails.finalTotal)}</Text>
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 <View style={{ ...styles.card, gap: 8 }}>
@@ -300,6 +511,7 @@ export default function ReturnFormScreen() {
                 <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={() => router.back()}
+                    disabled={submitting}
                 >
                     <Text style={styles.cancelButtonText} >
                         Hủy
@@ -307,12 +519,15 @@ export default function ReturnFormScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={styles.submitButton}
-                    onPress={() => {
-                        router.push("/account/returned_order");
-                    }}
+                    style={[styles.submitButton, submitting && styles.disabledButton]}
+                    onPress={handleSubmit}
+                    disabled={submitting}
                 >
-                    <Text style={styles.submitButtonText}>Gửi</Text>
+                    {submitting ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                        <Text style={styles.submitButtonText}>Gửi</Text>
+                    )}
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
@@ -323,6 +538,15 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#F5F5F5",
+    },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#666',
     },
     header: {
         backgroundColor: "white",
@@ -368,6 +592,17 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 8,
         marginHorizontal: 8,
+    },
+    moreProductsIndicator: {
+        padding: 8,
+        marginTop: 10,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 4,
+        alignItems: 'center',
+    },
+    moreProductsText: {
+        fontSize: 12,
+        color: '#666',
     },
     shippingInfoRow: {
         flexDirection: "row",
@@ -612,5 +847,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
         color: "white",
+    },
+    disabledButton: {
+        backgroundColor: '#cccccc',
     },
 });

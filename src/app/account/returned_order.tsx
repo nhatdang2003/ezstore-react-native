@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -10,27 +11,161 @@ import {
     Platform,
     Alert,
     Dimensions,
+    ActivityIndicator,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { COLOR } from "@/src/constants/color";
 import * as Clipboard from 'expo-clipboard';
 import { FONT } from "@/src/constants/font";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Modal from "react-native-modal";
-import { useState } from "react";
+import { getReturnRequestById, deleteReturnRequest, getReturnRequestByOrderId } from "@/src/services/return-request.service";
+import { ReturnRequestRes } from "@/src/types/return-request.type";
+import { formatPrice } from "@/src/utils/product";
+import ConfirmDialog from "@/src/components/ConfirmModal";
 
 const STATE_COLORS = {
     disabled: "#ccc",
     pending: "#FFA500",
     success: "#4CAF50",
     error: "#F44336",
+    cancelled: "#888888"
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function ReturnedOrderScreen() {
     const [isModalVisible, setModalVisible] = useState(false);
+    const [returnRequest, setReturnRequest] = useState<ReturnRequestRes | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [isConfirmModalVisible, setConfirmModalVisible] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
+
+    const { orderId, returnRequestId } = useLocalSearchParams<{ orderId: string, returnRequestId: string }>();
+
+    useEffect(() => {
+        const fetchReturnRequest = async () => {
+            try {
+                // If returnRequestId is provided, fetch that specific return request
+                if (returnRequestId) {
+                    const response = await getReturnRequestById(Number(returnRequestId));
+                    setReturnRequest(response.data);
+                }
+                // If only orderId is provided, fetch return request for that order
+                else if (orderId) {
+                    const response = await getReturnRequestByOrderId(Number(orderId));
+                    setReturnRequest(response.data);
+                }
+            } catch (error) {
+                console.error("Error fetching return request:", error);
+                if (Platform.OS === "android") {
+                    ToastAndroid.show(
+                        "Không thể tải thông tin yêu cầu hoàn trả",
+                        ToastAndroid.SHORT
+                    );
+                } else {
+                    Alert.alert("Lỗi", "Không thể tải thông tin yêu cầu hoàn trả");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchReturnRequest();
+    }, [orderId, returnRequestId]);
+
+    const handleCancelReturnRequest = async () => {
+        if (!returnRequest) return;
+
+        setCancelling(true);
+        try {
+            await deleteReturnRequest(returnRequest.id);
+
+            // Show success message
+            if (Platform.OS === "android") {
+                ToastAndroid.show(
+                    "Đã hủy yêu cầu hoàn trả thành công",
+                    ToastAndroid.SHORT
+                );
+            } else {
+                Alert.alert("Thành công", "Đã hủy yêu cầu hoàn trả thành công");
+            }
+
+            // Navigate back or refresh the data
+            router.back();
+        } catch (error) {
+            console.error("Error cancelling return request:", error);
+
+            // Show error message
+            if (Platform.OS === "android") {
+                ToastAndroid.show(
+                    "Không thể hủy yêu cầu hoàn trả",
+                    ToastAndroid.SHORT
+                );
+            } else {
+                Alert.alert("Lỗi", "Không thể hủy yêu cầu hoàn trả");
+            }
+        } finally {
+            setCancelling(false);
+            setConfirmModalVisible(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color={COLOR.PRIMARY} />
+                <Text style={styles.loadingText}>Đang tải thông tin yêu cầu hoàn trả...</Text>
+            </SafeAreaView>
+        );
+    }
+
+    if (!returnRequest) {
+        return (
+            <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+                <Text style={styles.errorText}>Không tìm thấy thông tin yêu cầu hoàn trả</Text>
+                <TouchableOpacity
+                    style={styles.backHomeButton}
+                    onPress={() => router.back()}
+                >
+                    <Text style={styles.backHomeButtonText}>Quay lại</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    // Determine the status color based on the return request status
+    const getStatusColor = () => {
+        switch (returnRequest.status) {
+            case 'PENDING':
+                return STATE_COLORS.pending;
+            case 'APPROVED':
+                return STATE_COLORS.success;
+            case 'REJECTED':
+                return STATE_COLORS.error;
+            case 'CANCELED':
+                return STATE_COLORS.cancelled;
+            default:
+                return STATE_COLORS.disabled;
+        }
+    };
+
+    // Get the status text to display
+    const getStatusText = () => {
+        switch (returnRequest.status) {
+            case 'PENDING':
+                return 'Đang chờ xác nhận';
+            case 'APPROVED':
+                return 'Chấp nhận hoàn tiền';
+            case 'REJECTED':
+                return 'Từ chối hoàn tiền';
+            case 'CANCELED':
+                return 'Đã hủy yêu cầu';
+            default:
+                return 'Không xác định';
+        }
+    };
 
     return (
         <>
@@ -49,108 +184,220 @@ export default function ReturnedOrderScreen() {
 
                 <ScrollView style={styles.scrollView}>
                     {/* Shipping Information */}
-                    <View style={{ ...styles.statusContainer, backgroundColor: STATE_COLORS.pending }}>
-                        <Text style={styles.statusText}>Chấp nhận hoàn tiền</Text>
+                    <View style={{ ...styles.statusContainer, backgroundColor: getStatusColor() }}>
+                        <Text style={styles.statusText}>{getStatusText()}</Text>
                     </View>
                     <View style={styles.card}>
-                        <Text style={{ marginBottom: 8, fontWeight: 500 }}>Tình trạng hoàn tiền</Text>
+                        <Text style={{ marginBottom: 8, fontWeight: "500" }}>Tình trạng hoàn tiền</Text>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{ borderColor: STATE_COLORS.disabled, borderWidth: 2, borderRadius: 50, padding: 8 }}>
-                                    <MaterialCommunityIcons name="dots-horizontal" size={24} color={STATE_COLORS.disabled} />
+                            {/* Pending status */}
+                            <View style={{ width: 80, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                <View style={{
+                                    borderColor: returnRequest.status !== 'PENDING' ? STATE_COLORS.disabled : STATE_COLORS.pending,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    <MaterialCommunityIcons
+                                        name="dots-horizontal"
+                                        size={24}
+                                        color={returnRequest.status !== 'PENDING' ? STATE_COLORS.disabled : STATE_COLORS.pending}
+                                    />
                                 </View>
                                 <Text style={{ textAlign: 'center' }}>Chờ xác nhận</Text>
                             </View>
-                            <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{ borderColor: STATE_COLORS.disabled, borderWidth: 2, borderRadius: 50, padding: 8 }}>
-                                    <MaterialCommunityIcons name="close" size={24} color={STATE_COLORS.disabled} />
+
+                            {/* Canceled status */}
+                            <View style={{ width: 80, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                <View style={{
+                                    borderColor: returnRequest.status === 'CANCELED' ? STATE_COLORS.cancelled : STATE_COLORS.disabled,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    <MaterialCommunityIcons
+                                        name="cancel"
+                                        size={24}
+                                        color={returnRequest.status === 'CANCELED' ? STATE_COLORS.cancelled : STATE_COLORS.disabled}
+                                    />
+                                </View>
+                                <Text style={{ textAlign: 'center' }}>Đã hủy</Text>
+                            </View>
+
+                            {/* Rejected status */}
+                            <View style={{ width: 80, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                <View style={{
+                                    borderColor: returnRequest.status === 'REJECTED' ? STATE_COLORS.error : STATE_COLORS.disabled,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    <MaterialCommunityIcons
+                                        name="close"
+                                        size={24}
+                                        color={returnRequest.status === 'REJECTED' ? STATE_COLORS.error : STATE_COLORS.disabled}
+                                    />
                                 </View>
                                 <Text style={{ textAlign: 'center' }}>Từ chối</Text>
                             </View>
-                            <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{ borderColor: STATE_COLORS.success, borderWidth: 2, borderRadius: 50, padding: 8 }}>
-                                    <MaterialCommunityIcons name="check" size={24} color={STATE_COLORS.success} />
+
+                            {/* Approved status */}
+                            <View style={{ width: 80, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                <View style={{
+                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    <MaterialCommunityIcons
+                                        name="check"
+                                        size={24}
+                                        color={returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled}
+                                    />
                                 </View>
                                 <Text style={{ textAlign: 'center' }}>Thành công</Text>
                             </View>
                         </View>
 
-                        <View style={styles.divider} />
+                        {/* <View style={styles.divider} /> */}
 
-                        <Text style={{ marginBottom: 8, fontWeight: 500 }}>Quá trình hoàn tiền</Text>
+                        {/* <Text style={{ marginBottom: 8, fontWeight: "500" }}>Quá trình hoàn tiền</Text>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{ borderColor: STATE_COLORS.disabled, borderWidth: 2, borderRadius: 50, padding: 8 }}>
-                                    <MaterialCommunityIcons name="check" size={24} color={STATE_COLORS.disabled} />
+                                <View style={{
+                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success :
+                                        returnRequest.status === 'CANCELED' ? STATE_COLORS.cancelled :
+                                            returnRequest.status === 'REJECTED' ? STATE_COLORS.error :
+                                                STATE_COLORS.disabled,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    {returnRequest.status === 'APPROVED' ? (
+                                        <MaterialCommunityIcons name="check" size={24} color={STATE_COLORS.success} />
+                                    ) : returnRequest.status === 'CANCELED' ? (
+                                        <MaterialCommunityIcons name="cancel" size={24} color={STATE_COLORS.cancelled} />
+                                    ) : returnRequest.status === 'REJECTED' ? (
+                                        <MaterialCommunityIcons name="close" size={24} color={STATE_COLORS.error} />
+                                    ) : (
+                                        <MaterialCommunityIcons name="dots-horizontal" size={24} color={STATE_COLORS.disabled} />
+                                    )}
                                 </View>
-                                <Text style={{ textAlign: 'center' }}>Chấp nhận hoàn tiền</Text>
+                                {returnRequest.status === 'APPROVED' ? (
+                                    <Text style={{ textAlign: 'center' }}>Chấp nhận hoàn tiền</Text>
+                                ) : returnRequest.status === 'CANCELED' ? (
+                                    <Text style={{ textAlign: 'center' }}>Đã hủy yêu cầu</Text>
+                                ) : returnRequest.status === 'REJECTED' ? (
+                                    <Text style={{ textAlign: 'center' }}>Từ chối hoàn tiền</Text>
+                                ) : (
+                                    <Text style={{ textAlign: 'center' }}>Chờ phê duyệt</Text>
+                                )}
                             </View>
+
                             <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{ borderColor: STATE_COLORS.disabled, borderWidth: 2, borderRadius: 50, padding: 8 }}>
-                                    <MaterialCommunityIcons name="bank-outline" size={24} color={STATE_COLORS.disabled} />
+                                <View style={{
+                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    <MaterialCommunityIcons
+                                        name="bank-outline"
+                                        size={24}
+                                        color={returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled}
+                                    />
                                 </View>
                                 <Text style={{ textAlign: 'center' }}>Đang hoàn tiền</Text>
                             </View>
+
                             <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{ borderColor: STATE_COLORS.success, borderWidth: 2, borderRadius: 50, padding: 8 }}>
-                                    <MaterialCommunityIcons name="credit-card-plus-outline" size={24} color={STATE_COLORS.success} />
+                                <View style={{
+                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled,
+                                    borderWidth: 2,
+                                    borderRadius: 50,
+                                    padding: 8
+                                }}>
+                                    <MaterialCommunityIcons
+                                        name="credit-card-plus-outline"
+                                        size={24}
+                                        color={returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled}
+                                    />
                                 </View>
                                 <Text style={{ textAlign: 'center' }}>Đã hoàn tiền</Text>
                             </View>
-                        </View>
+                        </View> */}
                     </View>
 
                     {/* Product Information */}
                     <View style={styles.card}>
                         <TouchableOpacity style={styles.storeRow}>
                             <View style={styles.storeInfo}>
-                                <Text style={styles.storeName}>Baseus Official Mall</Text>
+                                <Text style={styles.storeName}>EZ Store</Text>
                             </View>
                             <Feather name="chevron-right" size={20} color="#AAAAAA" />
                         </TouchableOpacity>
 
                         <View style={styles.divider} />
 
-                        <View style={styles.productRow}>
-                            <Image
-                                source={{
-                                    uri: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/2366451c-9ea3-4dd0-b454-ab0c6454f354.jpg-CPLbbbMNG52r3dHe5kdLJ1PniWunyh.jpeg",
-                                }}
-                                style={styles.productImage}
-                            />
-                            <View style={styles.productDetails}>
-                                <Text style={styles.productName} numberOfLines={2}>
-                                    Cáp Sạc Nhanh Baseus Cổng USB C Sang 2...
-                                </Text>
-                                <Text style={styles.productVariant}>1M Black</Text>
-                                <View style={styles.quantityPriceRow}>
-                                    <Text style={styles.quantity}>x1</Text>
-                                    <View style={styles.priceContainer}>
-                                        <Text style={styles.originalPrice}>₫218.000</Text>
-                                        <Text style={styles.discountedPrice}>₫109.000</Text>
+                        {returnRequest.orderItems && returnRequest.orderItems.length > 0 && (
+                            <View style={styles.productRow}>
+                                <Image
+                                    source={{
+                                        uri: returnRequest.orderItems[0].variantImage || "https://via.placeholder.com/80",
+                                    }}
+                                    style={styles.productImage}
+                                />
+                                <View style={styles.productDetails}>
+                                    <Text style={styles.productName} numberOfLines={2}>
+                                        {returnRequest.orderItems[0].productName}
+                                    </Text>
+                                    <Text style={styles.productVariant}>
+                                        {returnRequest.orderItems[0].color} {returnRequest.orderItems[0].size}
+                                    </Text>
+                                    <View style={styles.quantityPriceRow}>
+                                        <Text style={styles.quantity}>x{returnRequest.orderItems[0].quantity}</Text>
+                                        <View style={styles.priceContainer}>
+                                            {returnRequest.orderItems[0].discount > 0 && (
+                                                <Text style={styles.originalPrice}>
+                                                    {formatPrice(returnRequest.orderItems[0].unitPrice)}
+                                                </Text>
+                                            )}
+                                            <Text style={styles.discountedPrice}>
+                                                {formatPrice(returnRequest.orderItems[0].unitPrice - returnRequest.orderItems[0].discount)}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
                             </View>
-                        </View>
+                        )}
 
                         <View style={styles.divider} />
 
                         <View style={{ gap: 4 }}>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                                 <Text style={{ color: '#666' }}>Tổng tiền hoàn:</Text>
-                                <Text>109.000đ</Text>
+                                <Text>
+                                    {returnRequest.orderItems && returnRequest.orderItems.length > 0
+                                        ? formatPrice(
+                                            returnRequest.orderItems.reduce((total, item) =>
+                                                total + ((item.unitPrice - item.discount) * item.quantity), 0)
+                                        )
+                                        : "0đ"}
+                                </Text>
                             </View>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                                 <Text style={{ color: '#666' }}>Hoàn tiền vào:</Text>
-                                <Text numberOfLines={1} style={{ flex: 1, textAlign: 'right' }}>0799123422 - BIDV</Text>
+                                <Text numberOfLines={1} style={{ flex: 1, textAlign: 'right' }}>
+                                    {returnRequest.accountNumber} - {returnRequest.bankName}
+                                </Text>
                             </View>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                                <Text style={{ color: '#666' }}>Ngày hoàn tiền:</Text>
-                                <Text>04/05/2025 3:30</Text>
+                                <Text style={{ color: '#666' }}>Ngày yêu cầu:</Text>
+                                <Text>{new Date(returnRequest.createdAt).toLocaleDateString('vi-VN')}</Text>
                             </View>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                                 <Text style={{ color: '#666' }}>Lý do hoàn tiền:</Text>
-                                <Text numberOfLines={1} style={{ flex: 1, textAlign: 'right' }}>Giao không đúng sản phẩm như mẫu đã đặt</Text>
+                                <Text numberOfLines={1} style={{ flex: 1, textAlign: 'right' }}>{returnRequest.reason}</Text>
                             </View>
                             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', alignSelf: "flex-end" }}
                                 onPress={() => { setModalVisible(true) }}>
@@ -160,13 +407,11 @@ export default function ReturnedOrderScreen() {
                             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: 'center', gap: 8 }}>
                                 <Text style={{ color: '#666' }}>Mã đơn hàng:</Text>
                                 <View style={styles.orderIdValue}>
-                                    <Text style={styles.orderId}>250314K01X5SU7</Text>
+                                    <Text style={styles.orderId}>{returnRequest.orderCode}</Text>
                                     <TouchableOpacity
                                         style={styles.copyButton}
                                         onPress={async () => {
-                                            const orderId = "250314K01X5SU7";
-
-                                            await Clipboard.setStringAsync(orderId);
+                                            await Clipboard.setStringAsync(returnRequest.orderCode);
                                             // Show feedback based on platform
                                             if (Platform.OS === "android") {
                                                 ToastAndroid.show(
@@ -187,7 +432,26 @@ export default function ReturnedOrderScreen() {
 
                     <View style={{ height: 100 }} />
                 </ScrollView>
+
+                {/* Add Cancel Return Request Button if status is PENDING */}
+                {returnRequest && returnRequest.status === 'PENDING' && (
+                    <View style={styles.bottomButtons}>
+                        <TouchableOpacity
+                            style={styles.cancelReturnButton}
+                            onPress={() => setConfirmModalVisible(true)}
+                            disabled={cancelling}
+                        >
+                            {cancelling ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Text style={styles.cancelReturnButtonText}>Hủy yêu cầu hoàn trả</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
             </SafeAreaView>
+
+            {/* Detail modal for reason */}
             <Modal
                 isVisible={isModalVisible}
                 onBackdropPress={() => setModalVisible(false)}
@@ -218,47 +482,46 @@ export default function ReturnedOrderScreen() {
                     <View style={{ padding: 16, paddingTop: 4, gap: 8 }}>
                         <View>
                             <Text style={{ color: '#666' }}>Lý do</Text>
-                            <Text>Hàng nguyên vẹn nhưng không còn nhu cầu</Text>
+                            <Text>{returnRequest.reason}</Text>
                         </View>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', gap: 8 }}>
-                            <View style={{
-                                width: 100,
-                                height: 100,
-                                marginRight: 8,
-                                borderRadius: 8,
-                                overflow: 'hidden',
-                                position: 'relative'
-                            }}>
-                                <Image source={{ uri: '' }} style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    borderRadius: 8,
-                                    backgroundColor: '#ccc'
-                                }} />
+                        {returnRequest.imageUrls && returnRequest.imageUrls.length > 0 && (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', gap: 8 }}>
+                                {returnRequest.imageUrls.map((imageUrl, index) => (
+                                    <View key={index} style={{
+                                        width: 100,
+                                        height: 100,
+                                        marginRight: 8,
+                                        borderRadius: 8,
+                                        overflow: 'hidden',
+                                        position: 'relative'
+                                    }}>
+                                        <Image source={{ uri: imageUrl }} style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            borderRadius: 8,
+                                            backgroundColor: '#ccc'
+                                        }} />
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        )}
+                        {returnRequest.adminComment && (
+                            <View style={{ padding: 8, borderRadius: 8, backgroundColor: '#eee', marginVertical: 8 }}>
+                                <Text style={{ fontWeight: "500" }}>Phản hồi của cửa hàng</Text>
+                                <Text>{returnRequest.adminComment}</Text>
                             </View>
-                            <View style={{
-                                width: 100,
-                                height: 100,
-                                marginRight: 8,
-                                borderRadius: 8,
-                                overflow: 'hidden',
-                                position: 'relative'
-                            }}>
-                                <Image source={{ uri: '' }} style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    borderRadius: 8,
-                                    backgroundColor: '#ccc'
-                                }} />
-                            </View>
-                        </ScrollView>
-                        <View style={{ padding: 8, borderRadius: 8, backgroundColor: '#eee', marginVertical: 8 }}>
-                            <Text style={{ fontWeight: "500" }}>Phản hồi của cửa hàng</Text>
-                            <Text>Đơn này không thể hoàn tiền</Text>
-                        </View>
+                        )}
                     </View>
                 </View>
-            </Modal >
+            </Modal>
+
+            {/* Confirmation Modal */}
+            <ConfirmDialog
+                visible={isConfirmModalVisible}
+                message="Bạn có chắc chắn muốn hủy yêu cầu hoàn trả này không?"
+                onCancel={() => setConfirmModalVisible(false)}
+                onConfirm={handleCancelReturnRequest}
+            />
         </>
     );
 }
@@ -267,6 +530,31 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#F5F5F5",
+    },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#666',
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#666',
+        marginBottom: 16,
+    },
+    backHomeButton: {
+        backgroundColor: COLOR.PRIMARY,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    backHomeButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '500',
     },
     header: {
         backgroundColor: "white",
@@ -551,6 +839,18 @@ const styles = StyleSheet.create({
         backgroundColor: COLOR.PRIMARY,
     },
     buyAgainButtonText: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "white",
+    },
+    cancelReturnButton: {
+        flex: 1,
+        borderRadius: 8,
+        paddingVertical: 12,
+        alignItems: "center",
+        backgroundColor: COLOR.PRIMARY,
+    },
+    cancelReturnButtonText: {
         fontSize: 14,
         fontWeight: "600",
         color: "white",
