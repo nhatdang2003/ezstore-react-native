@@ -12,6 +12,7 @@ export interface ReturnRequestRes {
     orderId: number;
     orderCode: string;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELED';
+    cashBackStatus: 'ACCEPTED' | 'IN_PROGRESS' | 'COMPLETED';
     reason: string;
     createdAt: string;
     originalPaymentMethod: string;

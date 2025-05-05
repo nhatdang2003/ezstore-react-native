@@ -7,9 +7,6 @@ import {
     TouchableOpacity,
     ScrollView,
     SafeAreaView,
-    ToastAndroid,
-    Platform,
-    Alert,
     Dimensions,
     ActivityIndicator,
 } from "react-native";
@@ -24,6 +21,7 @@ import { getReturnRequestById, deleteReturnRequest, getReturnRequestByOrderId } 
 import { ReturnRequestRes } from "@/src/types/return-request.type";
 import { formatPrice } from "@/src/utils/product";
 import ConfirmDialog from "@/src/components/ConfirmModal";
+import AlertDialog from "@/src/components/AlertModal";
 
 const STATE_COLORS = {
     disabled: "#ccc",
@@ -40,6 +38,8 @@ export default function ReturnedOrderScreen() {
     const [returnRequest, setReturnRequest] = useState<ReturnRequestRes | null>(null);
     const [loading, setLoading] = useState(true);
     const [isConfirmModalVisible, setConfirmModalVisible] = useState(false);
+    const [isAlertModalVisible, setAlertModalVisible] = useState(false);
+    const [alertMessage, setAlertMessage] = useState("");
     const [cancelling, setCancelling] = useState(false);
 
     const { orderId, returnRequestId } = useLocalSearchParams<{ orderId: string, returnRequestId: string }>();
@@ -59,14 +59,8 @@ export default function ReturnedOrderScreen() {
                 }
             } catch (error) {
                 console.error("Error fetching return request:", error);
-                if (Platform.OS === "android") {
-                    ToastAndroid.show(
-                        "Không thể tải thông tin yêu cầu hoàn trả",
-                        ToastAndroid.SHORT
-                    );
-                } else {
-                    Alert.alert("Lỗi", "Không thể tải thông tin yêu cầu hoàn trả");
-                }
+                setAlertMessage("Không thể tải thông tin yêu cầu hoàn trả");
+                setAlertModalVisible(true);
             } finally {
                 setLoading(false);
             }
@@ -82,30 +76,16 @@ export default function ReturnedOrderScreen() {
         try {
             await deleteReturnRequest(returnRequest.id);
 
-            // Show success message
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Đã hủy yêu cầu hoàn trả thành công",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Thành công", "Đã hủy yêu cầu hoàn trả thành công");
-            }
+            setAlertMessage("Đã hủy yêu cầu hoàn trả thành công");
+            setAlertModalVisible(true);
 
             // Navigate back or refresh the data
             router.back();
         } catch (error) {
             console.error("Error cancelling return request:", error);
 
-            // Show error message
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Không thể hủy yêu cầu hoàn trả",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Lỗi", "Không thể hủy yêu cầu hoàn trả");
-            }
+            setAlertMessage("Không thể hủy yêu cầu hoàn trả");
+            setAlertModalVisible(true);
         } finally {
             setCancelling(false);
             setConfirmModalVisible(false);
@@ -134,6 +114,11 @@ export default function ReturnedOrderScreen() {
             </SafeAreaView>
         );
     }
+
+    // Set default cashBackStatus to 'ACCEPTED' if status is 'APPROVED' but no cashBackStatus is provided
+    const cashBackStatus = returnRequest.status === 'APPROVED' && !returnRequest.cashBackStatus
+        ? 'ACCEPTED'
+        : returnRequest.cashBackStatus;
 
     // Determine the status color based on the return request status
     const getStatusColor = () => {
@@ -188,7 +173,7 @@ export default function ReturnedOrderScreen() {
                         <Text style={styles.statusText}>{getStatusText()}</Text>
                     </View>
                     <View style={styles.card}>
-                        <Text style={{ marginBottom: 8, fontWeight: "500" }}>Tình trạng hoàn tiền</Text>
+                        <Text style={{ marginBottom: 8, fontWeight: "500" }}>Yêu cầu hoàn tiền</Text>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                             {/* Pending status */}
                             <View style={{ width: 80, justifyContent: 'center', alignItems: "center", gap: 8 }}>
@@ -255,77 +240,69 @@ export default function ReturnedOrderScreen() {
                                         color={returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled}
                                     />
                                 </View>
-                                <Text style={{ textAlign: 'center' }}>Thành công</Text>
+                                <Text style={{ textAlign: 'center' }}>Chấp nhận</Text>
                             </View>
                         </View>
 
-                        {/* <View style={styles.divider} /> */}
+                        <View style={styles.divider} />
 
-                        {/* <Text style={{ marginBottom: 8, fontWeight: "500" }}>Quá trình hoàn tiền</Text>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                            <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{
-                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success :
-                                        returnRequest.status === 'CANCELED' ? STATE_COLORS.cancelled :
-                                            returnRequest.status === 'REJECTED' ? STATE_COLORS.error :
-                                                STATE_COLORS.disabled,
-                                    borderWidth: 2,
-                                    borderRadius: 50,
-                                    padding: 8
-                                }}>
-                                    {returnRequest.status === 'APPROVED' ? (
-                                        <MaterialCommunityIcons name="check" size={24} color={STATE_COLORS.success} />
-                                    ) : returnRequest.status === 'CANCELED' ? (
-                                        <MaterialCommunityIcons name="cancel" size={24} color={STATE_COLORS.cancelled} />
-                                    ) : returnRequest.status === 'REJECTED' ? (
-                                        <MaterialCommunityIcons name="close" size={24} color={STATE_COLORS.error} />
-                                    ) : (
-                                        <MaterialCommunityIcons name="dots-horizontal" size={24} color={STATE_COLORS.disabled} />
-                                    )}
-                                </View>
-                                {returnRequest.status === 'APPROVED' ? (
-                                    <Text style={{ textAlign: 'center' }}>Chấp nhận hoàn tiền</Text>
-                                ) : returnRequest.status === 'CANCELED' ? (
-                                    <Text style={{ textAlign: 'center' }}>Đã hủy yêu cầu</Text>
-                                ) : returnRequest.status === 'REJECTED' ? (
-                                    <Text style={{ textAlign: 'center' }}>Từ chối hoàn tiền</Text>
-                                ) : (
-                                    <Text style={{ textAlign: 'center' }}>Chờ phê duyệt</Text>
-                                )}
-                            </View>
+                        {returnRequest.status === 'APPROVED' && (
+                            <>
+                                <Text style={{ marginBottom: 8, fontWeight: "500" }}>Quá trình hoàn tiền</Text>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                    <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                        <View style={{
+                                            borderColor: STATE_COLORS.success,
+                                            borderWidth: 2,
+                                            borderRadius: 50,
+                                            padding: 8
+                                        }}>
+                                            <MaterialCommunityIcons name="check" size={24} color={STATE_COLORS.success} />
+                                        </View>
+                                        <Text style={{ textAlign: 'center' }}>Chấp nhận hoàn tiền</Text>
+                                    </View>
 
-                            <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{
-                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled,
-                                    borderWidth: 2,
-                                    borderRadius: 50,
-                                    padding: 8
-                                }}>
-                                    <MaterialCommunityIcons
-                                        name="bank-outline"
-                                        size={24}
-                                        color={returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled}
-                                    />
-                                </View>
-                                <Text style={{ textAlign: 'center' }}>Đang hoàn tiền</Text>
-                            </View>
+                                    <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                        <View style={{
+                                            borderColor:
+                                                cashBackStatus === 'IN_PROGRESS' || cashBackStatus === 'COMPLETED'
+                                                    ? STATE_COLORS.success
+                                                    : STATE_COLORS.disabled,
+                                            borderWidth: 2,
+                                            borderRadius: 50,
+                                            padding: 8
+                                        }}>
+                                            <MaterialCommunityIcons
+                                                name="bank-outline"
+                                                size={24}
+                                                color={
+                                                    cashBackStatus === 'IN_PROGRESS' || cashBackStatus === 'COMPLETED'
+                                                        ? STATE_COLORS.success
+                                                        : STATE_COLORS.disabled
+                                                }
+                                            />
+                                        </View>
+                                        <Text style={{ textAlign: 'center' }}>Đang hoàn tiền</Text>
+                                    </View>
 
-                            <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
-                                <View style={{
-                                    borderColor: returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled,
-                                    borderWidth: 2,
-                                    borderRadius: 50,
-                                    padding: 8
-                                }}>
-                                    <MaterialCommunityIcons
-                                        name="credit-card-plus-outline"
-                                        size={24}
-                                        color={returnRequest.status === 'APPROVED' ? STATE_COLORS.success : STATE_COLORS.disabled}
-                                    />
+                                    <View style={{ width: 100, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                                        <View style={{
+                                            borderColor: cashBackStatus === 'COMPLETED' ? STATE_COLORS.success : STATE_COLORS.disabled,
+                                            borderWidth: 2,
+                                            borderRadius: 50,
+                                            padding: 8
+                                        }}>
+                                            <MaterialCommunityIcons
+                                                name="credit-card-plus-outline"
+                                                size={24}
+                                                color={cashBackStatus === 'COMPLETED' ? STATE_COLORS.success : STATE_COLORS.disabled}
+                                            />
+                                        </View>
+                                        <Text style={{ textAlign: 'center' }}>Đã hoàn tiền</Text>
+                                    </View>
                                 </View>
-                                <Text style={{ textAlign: 'center' }}>Đã hoàn tiền</Text>
-                            </View>
-                        </View> */}
+                            </>
+                        )}
                     </View>
 
                     {/* Product Information */}
@@ -412,15 +389,8 @@ export default function ReturnedOrderScreen() {
                                         style={styles.copyButton}
                                         onPress={async () => {
                                             await Clipboard.setStringAsync(returnRequest.orderCode);
-                                            // Show feedback based on platform
-                                            if (Platform.OS === "android") {
-                                                ToastAndroid.show(
-                                                    "Đã sao chép mã đơn hàng",
-                                                    ToastAndroid.SHORT
-                                                );
-                                            } else {
-                                                Alert.alert("Thông báo", "Đã sao chép mã đơn hàng");
-                                            }
+                                            setAlertMessage("Đã sao chép mã đơn hàng");
+                                            setAlertModalVisible(true);
                                         }}
                                     >
                                         <Text style={styles.copyButtonText}>SAO CHÉP</Text>
@@ -521,6 +491,13 @@ export default function ReturnedOrderScreen() {
                 message="Bạn có chắc chắn muốn hủy yêu cầu hoàn trả này không?"
                 onCancel={() => setConfirmModalVisible(false)}
                 onConfirm={handleCancelReturnRequest}
+            />
+
+            {/* Alert Modal */}
+            <AlertDialog
+                visible={isAlertModalVisible}
+                message={alertMessage}
+                onClose={() => setAlertModalVisible(false)}
             />
         </>
     );
