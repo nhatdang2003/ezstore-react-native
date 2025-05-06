@@ -176,7 +176,7 @@ export default function ReturnedOrderScreen() {
                         <Text style={{ marginBottom: 8, fontWeight: "500" }}>Yêu cầu hoàn tiền</Text>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                             {/* Pending status */}
-                            <View style={{ width: 80, justifyContent: 'center', alignItems: "center", gap: 8 }}>
+                            <View style={{ width: 90, justifyContent: 'center', alignItems: "center", gap: 8 }}>
                                 <View style={{
                                     borderColor: returnRequest.status !== 'PENDING' ? STATE_COLORS.disabled : STATE_COLORS.pending,
                                     borderWidth: 2,
@@ -307,15 +307,6 @@ export default function ReturnedOrderScreen() {
 
                     {/* Product Information */}
                     <View style={styles.card}>
-                        <TouchableOpacity style={styles.storeRow}>
-                            <View style={styles.storeInfo}>
-                                <Text style={styles.storeName}>EZ Store</Text>
-                            </View>
-                            <Feather name="chevron-right" size={20} color="#AAAAAA" />
-                        </TouchableOpacity>
-
-                        <View style={styles.divider} />
-
                         {returnRequest.orderItems && returnRequest.orderItems.length > 0 && (
                             <View style={styles.productRow}>
                                 <Image
@@ -329,7 +320,10 @@ export default function ReturnedOrderScreen() {
                                         {returnRequest.orderItems[0].productName}
                                     </Text>
                                     <Text style={styles.productVariant}>
-                                        {returnRequest.orderItems[0].color} {returnRequest.orderItems[0].size}
+                                        Màu: {returnRequest.orderItems[0].color}
+                                    </Text>
+                                    <Text style={styles.productVariant}>
+                                        Kích thước: {returnRequest.orderItems[0].size}
                                     </Text>
                                     <View style={styles.quantityPriceRow}>
                                         <Text style={styles.quantity}>x{returnRequest.orderItems[0].quantity}</Text>
@@ -664,7 +658,7 @@ const styles = StyleSheet.create({
     },
     productImage: {
         width: 80,
-        height: 80,
+        height: 120,
         borderRadius: 4,
         backgroundColor: "#F5F5F5",
     },

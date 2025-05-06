@@ -24,6 +24,7 @@ import { useFocusEffect } from "expo-router";
 import CancelOrderModal from "@/src/components/CancelOrderModal";
 import AlertDialog from "@/src/components/AlertModal";
 import ConfirmDialog from "@/src/components/ConfirmModal";
+import { Ionicons } from "@expo/vector-icons";
 
 const OrderHistoryScreen = () => {
     const [activeTab, setActiveTab] = useState<string>(STATUS_ORDER[0].value);
@@ -518,6 +519,17 @@ const OrderHistoryScreen = () => {
                 </ScrollView>
             </View>
 
+            {/* Hướng dẫn sử dụng */}
+            {activeTab === "DELIVERED" && (
+                <View style={styles.tipsContainer}>
+                    <View style={styles.tipsHeader}>
+                        <Ionicons name="information-circle" size={20} color="#FF9500" />
+                        <Text style={styles.tipsTitle}>Lưu ý</Text>
+                    </View>
+                    <Text style={styles.tipsText}>• Hoàn trả trong vòng 30 ngày kể từ ngày nhận hàng.</Text>
+                </View>
+            )}
+
             {/* Orders */}
             <FlatList
                 data={orders[activeTab]}
@@ -803,6 +815,33 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontSize: 16,
         fontFamily: FONT.LORA_MEDIUM,
+    },
+    tipsContainer: {
+        marginHorizontal: 8,
+        marginTop: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: '#FFFAF0',
+        borderLeftWidth: 3,
+        borderLeftColor: '#FF9500',
+    },
+    tipsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    tipsTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FF9500',
+        marginLeft: 8,
+    },
+    tipsText: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 8,
+        lineHeight: 20,
     },
 });
 

@@ -18,12 +18,12 @@ import { useRouter } from 'expo-router';
 import DatePicker from '../../components/Datepicker';
 import { COLOR } from '../../constants/color';
 import { FONT } from '@/src/constants/font';
-import { getUserOrderStatistics, getUserOrderMonthlyChart, getUserOrderStatusChart } from '@/src/services/order.service';
+import { getUserOrderStatistics, getUserOrderMonthlyChart, getUserOrderStatusChart, getOrderHistoryStatisticUser } from '@/src/services/order.service';
 import {
     OrderStatisticsSummaryRequest,
     OrderStatisticsSummaryResponse,
     MonthlySpendingChartResponse,
-    StatusSpendingChartResponse
+    StatusSpendingChartResponse,
 } from '@/src/types/order.type';
 
 const OrderStatistics = () => {
@@ -35,6 +35,13 @@ const OrderStatistics = () => {
     const [statistics, setStatistics] = useState<OrderStatisticsSummaryResponse | null>(null);
     const [monthlyChartData, setMonthlyChartData] = useState<MonthlySpendingChartResponse | null>(null);
     const [statusChartData, setStatusChartData] = useState<StatusSpendingChartResponse | null>(null);
+
+    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [ordersPage, setOrdersPage] = useState(0);
+    const [hasMoreOrders, setHasMoreOrders] = useState(true);
+    const ORDERS_PAGE_SIZE = 100;
 
     // Set default date range to the last 6 months
     const today = new Date();
@@ -89,11 +96,53 @@ const OrderStatistics = () => {
         }
     };
 
+    // Replace fetchOrders function with the new implementation using getOrderHistoryStatisticUser
+    const fetchOrders = async (refresh = true) => {
+        try {
+            setOrdersLoading(true);
+            const pageToFetch = refresh ? 0 : ordersPage;
+
+            // Use getOrderHistoryStatisticUser instead of getUserOrders
+            const response = await getOrderHistoryStatisticUser({
+                page: pageToFetch,
+                size: ORDERS_PAGE_SIZE,
+                status: selectedStatus,
+                startDate: formatDateForAPI(startDate),
+                endDate: formatDateForAPI(endDate)
+            });
+
+            if (response.data) {
+                if (refresh) {
+                    setOrders(response.data.data || []);
+                    setOrdersPage(0);
+                } else {
+                    setOrders([...orders, ...(response.data.data || [])]);
+                    setOrdersPage(pageToFetch + 1);
+                }
+
+                const totalPages = response.data.meta?.pages || 1;
+                const currentPageNumber = response.data.meta?.page || 0;
+                setHasMoreOrders(currentPageNumber < totalPages - 1);
+            }
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+        } finally {
+            setOrdersLoading(false);
+        }
+    };
+
     // Fetch data when component mounts
     useEffect(() => {
         fetchStatistics();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Add this effect
+    useEffect(() => {
+        if (startDate && endDate) {
+            fetchOrders();
+        }
+    }, [selectedStatus, startDate, endDate]);
 
     // Calculate statistics for cards
     const calculateStatistics = () => {
@@ -223,7 +272,7 @@ const OrderStatistics = () => {
 
     const formatDate = (dateString: Date | string) => {
         const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' });
+        return date?.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' });
     };
 
     const formattedDateRange = () => {
@@ -231,7 +280,7 @@ const OrderStatistics = () => {
     };
 
     const formatCurrency = (amount: number) => {
-        return amount.toLocaleString('vi-VN');
+        return amount?.toLocaleString('vi-VN');
     };
 
     // Get calculated values
@@ -468,6 +517,120 @@ const OrderStatistics = () => {
                     )}
                 </Animated.View>
 
+                {/* Orders Section */}
+                <Text style={styles.sectionTitle}>Danh sách đơn hàng</Text>
+
+                {/* Status Filter */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.statusFilterScrollView}
+                    contentContainerStyle={styles.statusFilterContainer}>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.statusFilter,
+                            selectedStatus === null && styles.statusFilterActive
+                        ]}
+                        onPress={() => setSelectedStatus(null)}>
+                        <Text style={[
+                            styles.statusFilterText,
+                            selectedStatus === null && styles.statusFilterTextActive
+                        ]}>Tất cả</Text>
+                    </TouchableOpacity>
+
+                    {['PENDING', 'PROCESSING', 'SHIPPING', 'DELIVERED', 'RETURNED', 'CANCELLED'].map(status => (
+                        <TouchableOpacity
+                            key={status}
+                            style={[
+                                styles.statusFilter,
+                                selectedStatus === status && styles.statusFilterActive,
+                                { borderColor: statusColors[status as keyof typeof statusColors] }
+                            ]}
+                            onPress={() => setSelectedStatus(status === selectedStatus ? null : status)}>
+                            <Text style={[
+                                styles.statusFilterText,
+                                selectedStatus === status && styles.statusFilterTextActive,
+                                { color: selectedStatus === status ? '#fff' : statusColors[status as keyof typeof statusColors] }
+                            ]}>
+                                {getStatusText(status)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                <View style={styles.orderListContainer}>
+                    {ordersLoading && ordersPage === 0 ? (
+                        <ActivityIndicator size="large" color={COLOR.PRIMARY} style={styles.contentLoader} />
+                    ) : orders.length === 0 ? (
+                        <View style={styles.noDataContainer}>
+                            <Ionicons name="receipt-outline" size={48} color="#ccc" />
+                            <Text style={styles.noDataText}>Không có đơn hàng nào trong khoảng thời gian đã chọn</Text>
+                        </View>
+                    ) : (
+                        <>
+                            {orders.map((order, index) => (
+                                <TouchableOpacity
+                                    key={order.id}
+                                    style={styles.orderItem}
+                                    onPress={() => router.navigate({
+                                        pathname: "/account/order_details",
+                                        params: { orderId: order.id }
+                                    })}>
+                                    <View style={styles.orderTopSection}>
+                                        <View style={styles.orderNumberContainer}>
+                                            <Text style={styles.orderNumberLabel}>Đơn hàng #{order.code}</Text>
+                                            <Text style={styles.orderDate}>{formatDate(order.orderDate)}</Text>
+                                        </View>
+                                        <View style={[
+                                            styles.statusBadge,
+                                            { backgroundColor: statusColors[order.status as keyof typeof statusColors] }
+                                        ]}>
+                                            <Text style={styles.statusBadgeText}>{getStatusShortText(order.status)}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.orderMiddleSection}>
+                                        <Text style={styles.productCount}>{order.lineItems?.length} sản phẩm</Text>
+                                        <Text style={styles.totalAmount}>{formatCurrency(order.total)}đ</Text>
+                                    </View>
+
+                                    <View style={styles.orderBottomSection}>
+                                        <View style={styles.orderDateContainer}>
+                                            <Ionicons name="time-outline" size={16} color="#666" />
+                                            <Text style={styles.orderDetailText}>
+                                                {new Date(order.orderDate)?.toLocaleTimeString('vi-VN', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </Text>
+                                        </View>
+
+                                        <View style={styles.viewDetailContainer}>
+                                            <Text style={styles.viewDetailText}>Xem chi tiết</Text>
+                                            <Ionicons name="chevron-forward" size={16} color={COLOR.PRIMARY} />
+                                        </View>
+                                    </View>
+
+                                </TouchableOpacity>
+                            ))}
+
+                            {hasMoreOrders && (
+                                <TouchableOpacity
+                                    style={styles.loadMoreButton}
+                                    onPress={() => fetchOrders(false)}
+                                    disabled={ordersLoading}>
+                                    {ordersLoading ? (
+                                        <ActivityIndicator size="small" color={COLOR.PRIMARY} />
+                                    ) : (
+                                        <Text style={styles.loadMoreText}>Xem thêm đơn hàng</Text>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </>
+                    )}
+                </View>
+
                 {/* Date Range Picker Modal */}
                 <Modal
                     visible={showDateRangePicker}
@@ -571,7 +734,7 @@ const OrderStatistics = () => {
                     </View>
                 </Modal>
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 
@@ -950,6 +1113,124 @@ const styles = StyleSheet.create({
     contentLoader: {
         marginVertical: 30,
     },
-})
+    statusFilterScrollView: {
+        marginBottom: 16,
+    },
+    statusFilterContainer: {
+        paddingRight: 16,
+    },
+    statusFilter: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#ddd',
+    },
+    statusFilterActive: {
+        backgroundColor: COLOR.PRIMARY,
+        borderColor: COLOR.PRIMARY,
+    },
+    statusFilterText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    statusFilterTextActive: {
+        color: '#fff',
+    },
+    orderListContainer: {
+        marginBottom: 16,
+    },
+    orderItem: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
+    },
+    orderTopSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    orderNumberContainer: {
+        flex: 1,
+    },
+    orderNumberLabel: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLOR.TEXT,
+    },
+    orderDate: {
+        fontSize: 13,
+        color: '#666',
+        marginTop: 4,
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 12,
+    },
+    statusBadgeText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#fff',
+    },
+    orderMiddleSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    productCount: {
+        fontSize: 14,
+        color: '#666',
+    },
+    totalAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLOR.PRIMARY,
+    },
+    orderBottomSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    orderDateContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    orderDetailText: {
+        fontSize: 13,
+        color: '#666',
+        marginLeft: 4,
+    },
+    viewDetailContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    viewDetailText: {
+        fontSize: 14,
+        color: COLOR.PRIMARY,
+        marginRight: 4,
+    },
+    orderDivider: {
+        height: 1,
+        backgroundColor: '#f0f0f0',
+        marginVertical: 12,
+    },
+    loadMoreButton: {
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadMoreText: {
+        fontSize: 14,
+        color: COLOR.PRIMARY,
+        fontWeight: '500',
+    },
+});
 
 export default OrderStatistics;
