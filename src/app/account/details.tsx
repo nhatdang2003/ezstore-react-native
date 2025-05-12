@@ -250,7 +250,7 @@ const ProfileDetails = () => {
                                     <CustomButton
                                         title="Đổi mật khẩu"
                                         variant="outlined"
-                                        onPress={() => router.push('/(auth)/reset_password')}
+                                        onPress={() => router.push('/account/change_password')}
                                         style={styles.changePasswordButton}
                                         textStyle={{ color: COLOR.PRIMARY }}
                                     />

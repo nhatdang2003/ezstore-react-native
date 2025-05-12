@@ -5,3 +5,9 @@ export interface UserInfo {
     role: string;
     cartItemsCount: number;
 }
+
+export interface ChangePasswordReq {
+    oldPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+}
