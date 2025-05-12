@@ -98,14 +98,10 @@ const RegisterScreen = () => {
 
                 // @ts-ignore
                 if (response.statusCode === 201) {
-                    const activeCodeResponse = await getActiveCode({ email: input.email });
-                    // @ts-ignore
-                    if (activeCodeResponse.statusCode === 200) {
-                        router.push({
-                            pathname: '/(auth)/verify',
-                            params: { email: input.email }
-                        });
-                    }
+                    router.push({
+                        pathname: '/(auth)/verify',
+                        params: { email: input.email }
+                    });
                 }
             } catch (error) {
                 console.log(error);
