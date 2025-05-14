@@ -146,7 +146,13 @@ const ProfileDetails = () => {
         return (
             <View style={styles.avatarContainer}>
                 <TouchableOpacity onPress={pickImage}>
-                    <Image source={{ uri: userInfo.avatar }} style={styles.avatar} />
+                    {userInfo.avatar ? (
+                        <Image source={{ uri: userInfo.avatar }} style={styles.avatar} />
+                    ) : (
+                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                            <MaterialCommunityIcons name="account" size={60} color="#9e9e9e" />
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
         )
@@ -335,8 +341,13 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        borderWidth: 1,
+        borderWidth: 1.3,
         borderColor: COLOR.PRIMARY,
+    },
+    avatarPlaceholder: {
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 })
 

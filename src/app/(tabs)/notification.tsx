@@ -162,10 +162,7 @@ const NotificationScreen = () => {
 
     const renderEmptyState = () => (
         <View style={styles.emptyContainer}>
-            <Image
-                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2748/2748558.png' }}
-                style={styles.emptyImage}
-            />
+            <Ionicons name="notifications-off-outline" size={80} color="#9e9e9e" />
             <Text style={styles.emptyTitle}>Chưa có thông báo nào</Text>
             <Text style={styles.emptyMessage}>
                 Chúng tôi sẽ thông báo cho bạn khi có điều gì đó quan trọng xảy ra.
@@ -343,6 +340,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 8,
+        marginTop: 20,
     },
     emptyMessage: {
         fontSize: 14,
