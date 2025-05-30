@@ -1,14 +1,14 @@
 import axios from '@/src/services/instance_axios';
-import { Response } from '@/src/types/response.type';
-import { NotificationsResponse } from '../types/notification.type';
+import { PaginatedResponse, Response } from '@/src/types/response.type';
+import { Notification } from '@/src/types/notification.type';
 
 export const getUnreadNotificationCount = (): Promise<Response<number>> => {
     const url = `api/v1/notifications/unread-count`
     return axios.get(url);
 }
 
-export const getNotifications = (): Promise<Response<NotificationsResponse>> => {
-    const url = `api/v1/notifications`
+export const getNotifications = (page: number = 0, pageSize: number = 10): Promise<PaginatedResponse<Notification>> => {
+    const url = `api/v1/notifications?page=${page}&pageSize=${pageSize}`
     return axios.get(url)
 }
 
