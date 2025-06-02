@@ -1,5 +1,5 @@
 import { View, Text, Image, StyleSheet, ScrollView } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { router, useRouter } from "expo-router";
 import Input from "@/src/components/Input";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -10,8 +10,14 @@ import DatePicker from "@/src/components/Datepicker";
 import Select from "@/src/components/Select";
 import CloseKeyboard from "@/src/components/CloseKeyboard";
 import SocialButtons from "@/src/components/SocialButtons";
-import { getActiveCode, postRegister } from "@/src/services/auth.service";
+import { getActiveCode, postRegister, postGoogleLogin } from "@/src/services/auth.service";
 import { Gender } from "@/src/types/auth.type";
+import {
+    GoogleSignin,
+    statusCodes,
+    GoogleSigninButton,
+} from '@react-native-google-signin/google-signin';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const RegisterScreen = () => {
     const router = useRouter();
@@ -111,8 +117,56 @@ const RegisterScreen = () => {
         }
     };
 
+    const handleGoogleSignIn = async () => {
+        try {
+            await GoogleSignin.hasPlayServices();
+            const userInfo = await GoogleSignin.signIn();
+            console.log('Google Sign-In Result:', userInfo);
+            
+            // Get server auth code
+            const serverAuthCode = userInfo.data?.serverAuthCode;
+            console.log('Server Auth Code:', serverAuthCode);
+            
+            if (serverAuthCode) {
+                const response = await postGoogleLogin(serverAuthCode);
+                // @ts-ignore
+                if (response.statusCode === 200) {
+                    await AsyncStorage.setItem('access_token', response.data.access_token);
+                    router.replace('/(tabs)');
+                } else {
+                    throw new Error('Login failed');
+                }
+            } else {
+                throw new Error('No server auth code received');
+            }
+        } catch (error: any) {
+            console.log('Google Sign-In Error:', error);
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                // User cancelled the login flow
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                // Operation is in progress already
+            } else {
+                setErrors(prev => ({
+                    ...prev,
+                    password: 'Đăng nhập Google thất bại, vui lòng thử lại'
+                }));
+            }
+        }
+    };
+
+    useEffect(() => {
+        GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+            offlineAccess: true
+        });
+    }, []);
+
     return (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollViewContent}
+            style={styles.scrollView}
+        >
             <CloseKeyboard>
                 <View style={styles.container}>
                     <View style={styles.logoContainer}>
@@ -224,11 +278,15 @@ const RegisterScreen = () => {
                             <View style={styles.divider} />
                         </View>
 
-                        <SocialButtons
-                            onGooglePress={() => { }}
-                            onFacebookPress={() => { }}
-                            onApplePress={() => { }}
-                        />
+                        <View style={styles.googleButtonContainer}>
+                            <GoogleSigninButton
+                                size={GoogleSigninButton.Size.Wide}
+                                color={GoogleSigninButton.Color.Light}
+                                onPress={handleGoogleSignIn}
+                                disabled={isLoading}
+                                style={styles.googleButton}
+                            />
+                        </View>
                     </View>
                 </View>
             </CloseKeyboard>
@@ -237,10 +295,18 @@ const RegisterScreen = () => {
 };
 
 const styles = StyleSheet.create({
+    scrollView: {
+        flex: 1,
+        backgroundColor: "#fff",
+    },
+    scrollViewContent: {
+        flexGrow: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: "#fff",
         padding: 20,
+        minHeight: '100%',
     },
     logoContainer: {
         alignItems: "center",
@@ -289,6 +355,15 @@ const styles = StyleSheet.create({
     orText: {
         color: '#666',
         paddingHorizontal: 10,
+    },
+    googleButtonContainer: {
+        alignItems: 'center',
+        width: '100%',
+    },
+    googleButton: {
+        width: '100%',
+        height: 40,
+        borderRadius: 8,
     },
 });
 
