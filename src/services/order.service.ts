@@ -3,6 +3,8 @@ import { PaginatedResponse, Response } from "@/src/types/response.type";
 import {
   OrderReviewRequest,
   OrderReviewResponse,
+  ReviewUploadSignUrlReq,
+  ReviewUploadSignUrlRes,
 } from "@/src/types/review.type";
 import {
   cancelOrderReq,
@@ -114,7 +116,16 @@ export const getUserOrderStatusChart = (
   return axios.post(url, data);
 };
 
-export const cancelOrder = (data: cancelOrderReq): Promise<Response<void>> => {
+export const cancelOrder = (
+  data: cancelOrderReq
+): Promise<Response<void>> => {
   const url = `/api/v1/orders/user/cancel`;
   return axios.put(url, data);
+};
+
+export const getReviewUploadSignUrl = (
+  data: ReviewUploadSignUrlReq
+): Promise<Response<ReviewUploadSignUrlRes>> => {
+  const url = `/api/v1/orders/user/reviews/upload`;
+  return axios.post(url, data);
 };

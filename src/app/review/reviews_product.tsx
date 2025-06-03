@@ -1,22 +1,33 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, Dimensions, FlatList } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { AntDesign, Ionicons, FontAwesome } from '@expo/vector-icons'
+import { Video, ResizeMode } from 'expo-av'
 import { FONT } from '@/src/constants/font'
 import { getProductReviews } from '@/src/services/product.service'
 import { formatDate } from '@/src/utils/date'
 import { ProductReview } from '@/src/types/product.type'
 
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
+
+interface MediaItem {
+    type: 'image' | 'video';
+    url: string;
+}
+
 const ReviewsProductScreen = () => {
     const router = useRouter()
     const { slug } = useLocalSearchParams()
+    const flatListRef = useRef<FlatList>(null)
 
     const [activeFilter, setActiveFilter] = useState<number | null>(null)
     const [reviews, setReviews] = useState<ProductReview[]>([])
     const [loading, setLoading] = useState(false)
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null)
+    const [currentReviewMedia, setCurrentReviewMedia] = useState<MediaItem[]>([])
     const PAGE_SIZE = 10
 
     useEffect(() => {
@@ -100,6 +111,35 @@ const ReviewsProductScreen = () => {
     const handleFilterSelect = (stars: number | null) => {
         setActiveFilter(stars === activeFilter ? null : stars)
     }
+
+    const openMediaViewer = (review: ProductReview, initialIndex: number) => {
+        const mediaItems: MediaItem[] = [
+            ...(review.imageUrls?.map(url => ({ type: 'image' as const, url })) || []),
+            ...(review.videoUrl ? [{ type: 'video' as const, url: review.videoUrl }] : [])
+        ];
+        setCurrentReviewMedia(mediaItems);
+        setSelectedMediaIndex(initialIndex);
+    };
+
+    const renderMediaItem = ({ item }: { item: MediaItem }) => (
+        <View style={styles.fullScreenMediaContainer}>
+            {item.type === 'video' ? (
+                <Video
+                    source={{ uri: item.url }}
+                    style={styles.fullScreenVideo}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    shouldPlay={false}
+                />
+            ) : (
+                <Image
+                    source={{ uri: item.url }}
+                    style={styles.fullScreenImage}
+                    resizeMode="contain"
+                />
+            )}
+        </View>
+    );
 
     return (
         <SafeAreaView style={styles.container}>
@@ -197,6 +237,44 @@ const ReviewsProductScreen = () => {
                                 <Text style={styles.reviewContent}>
                                     {review.description}
                                 </Text>
+
+                                {/* Media Section */}
+                                {(review.imageUrls?.length > 0 || review.videoUrl) && (
+                                    <View style={styles.mediaContainer}>
+                                        <ScrollView 
+                                            horizontal 
+                                            showsHorizontalScrollIndicator={false}
+                                            style={styles.mediaScroll}
+                                        >
+                                            {review.imageUrls?.map((imageUrl, imgIndex) => (
+                                                <TouchableOpacity
+                                                    key={`img-${imgIndex}`}
+                                                    onPress={() => openMediaViewer(review, imgIndex)}
+                                                >
+                                                    <Image
+                                                        source={{ uri: imageUrl }}
+                                                        style={styles.mediaImage}
+                                                    />
+                                                </TouchableOpacity>
+                                            ))}
+                                            {review.videoUrl && (
+                                                <TouchableOpacity
+                                                    onPress={() => openMediaViewer(review, review.imageUrls?.length || 0)}
+                                                >
+                                                    <View style={styles.videoContainer}>
+                                                        <Video
+                                                            source={{ uri: review.videoUrl }}
+                                                            style={styles.mediaVideo}
+                                                            useNativeControls
+                                                            resizeMode={ResizeMode.COVER}
+                                                            shouldPlay={false}
+                                                        />
+                                                    </View>
+                                                </TouchableOpacity>
+                                            )}
+                                        </ScrollView>
+                                    </View>
+                                )}
                             </View>
                             {index < reviews.length - 1 && <View style={styles.divider} />}
                         </React.Fragment>
@@ -209,6 +287,48 @@ const ReviewsProductScreen = () => {
                     </View>
                 )}
             </ScrollView>
+
+            {/* Fullscreen Media Modal */}
+            <Modal
+                visible={selectedMediaIndex !== null}
+                transparent={true}
+                onRequestClose={() => setSelectedMediaIndex(null)}
+            >
+                <View style={styles.modalContainer}>
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={() => setSelectedMediaIndex(null)}
+                    >
+                        <Ionicons name="close" size={28} color="white" />
+                    </TouchableOpacity>
+
+                    <View style={styles.mediaCountContainer}>
+                        <Text style={styles.mediaCountText}>
+                            {selectedMediaIndex !== null ? `${selectedMediaIndex + 1}/${currentReviewMedia.length}` : ''}
+                        </Text>
+                    </View>
+
+                    <FlatList
+                        ref={flatListRef}
+                        data={currentReviewMedia}
+                        renderItem={renderMediaItem}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        initialScrollIndex={selectedMediaIndex || 0}
+                        getItemLayout={(data, index) => ({
+                            length: screenWidth,
+                            offset: screenWidth * index,
+                            index,
+                        })}
+                        onScroll={e => {
+                            const newIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                            setSelectedMediaIndex(newIndex);
+                        }}
+                        scrollEventThrottle={16}
+                    />
+                </View>
+            </Modal>
         </SafeAreaView>
     )
 }
@@ -331,7 +451,68 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#999',
         fontFamily: FONT.LORA,
-    }
+    },
+    mediaContainer: {
+        marginTop: 8,
+    },
+    mediaScroll: {
+        flexGrow: 0,
+    },
+    mediaImage: {
+        width: 120,
+        height: 120,
+        borderRadius: 8,
+        marginRight: 8,
+    },
+    videoContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 8,
+        marginRight: 8,
+        backgroundColor: '#000',
+        overflow: 'hidden',
+    },
+    mediaVideo: {
+        width: '100%',
+        height: '100%',
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    },
+    fullScreenMediaContainer: {
+        width: screenWidth,
+        height: screenHeight,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fullScreenImage: {
+        width: screenWidth,
+        height: screenHeight,
+    },
+    fullScreenVideo: {
+        width: screenWidth,
+        height: screenWidth * (9/16), // 16:9 aspect ratio
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 40,
+        right: 20,
+        zIndex: 1,
+        padding: 10,
+    },
+    mediaCountContainer: {
+        position: 'absolute',
+        top: 40,
+        left: 20,
+        zIndex: 1,
+        padding: 10,
+    },
+    mediaCountText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+    },
 })
 
 export default ReviewsProductScreen

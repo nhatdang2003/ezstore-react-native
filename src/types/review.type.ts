@@ -10,6 +10,8 @@ export interface OrderReviewResponse {
     createdAt: string;
     rating: number;
     description: string;
+    imageUrls: string[];
+    videoUrl: string;
 }
 
 
@@ -19,5 +21,18 @@ export interface OrderReviewRequest {
         lineItemId: number;
         rating: number;
         description: string;
+        imageUrls: string[];
+        videoUrl: string;
     };
+}
+
+export interface ReviewUploadSignUrlReq {
+    fileNames: string[];
+}
+
+export interface ReviewUploadSignUrlRes {
+    signedUrls: {
+        fileName: string;
+        signedUrl: string;
+    }[];
 }
