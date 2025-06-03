@@ -7,14 +7,9 @@ import CustomButton from "@/src/components/CustomButton";
 import { COLOR } from "@/src/constants/color";
 import Checkbox from "@/src/components/Checkbox";
 import ErrorMessageInput from "@/src/components/ErrorMessageInput";
-import { postLogin, postGoogleLogin } from "@/src/services/auth.service";
+import { postLogin } from "@/src/services/auth.service";
 import SocialButtons from "@/src/components/SocialButtons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-    GoogleSignin,
-    statusCodes,
-    GoogleSigninButton,
-} from '@react-native-google-signin/google-signin';
 
 const LoginScreen = () => {
     const router = useRouter();
@@ -30,13 +25,6 @@ const LoginScreen = () => {
     });
 
     const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        GoogleSignin.configure({
-            webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-            offlineAccess: true
-        });
-    }, []);
 
     const validateForm = () => {
         const emailError = !input.email.trim()
@@ -91,44 +79,13 @@ const LoginScreen = () => {
         }
     };
 
-    const handleGoogleSignIn = async () => {
-        try {
-            await GoogleSignin.hasPlayServices();
-            const userInfo = await GoogleSignin.signIn();
-            
-            // Get server auth code
-            const serverAuthCode = userInfo.data?.serverAuthCode;
-            console.log('Server Auth Code:', serverAuthCode);
-            
-            if (serverAuthCode) {
-                const response = await postGoogleLogin(serverAuthCode);
-                // @ts-ignore
-                if (response.statusCode === 200) {
-                    await handleSuccessfulLogin(response.data.access_token);
-                } else {
-                    throw new Error('Login failed');
-                }
-            } else {
-                throw new Error('No access token received');
-            }
-        } catch (error: any) {
-            console.log('Google Sign-In Error:', error);
-            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                // User cancelled the login flow
-            } else if (error.code === statusCodes.IN_PROGRESS) {
-                // Operation is in progress already
-            } else {
-                setErrors(prev => ({
-                    ...prev,
-                    password: 'Đăng nhập Google thất bại, vui lòng thử lại'
-                }));
-            }
-        }
-    };
-
     const handleForgotPassword = () => {
         router.navigate('/(auth)/forget_password')
     }
+
+    const handleGoogleSignIn = () => {
+        router.navigate('/(auth)/login-google');
+    };
 
     return (
         <View style={styles.container}>
@@ -197,15 +154,11 @@ const LoginScreen = () => {
                     <View style={styles.divider} />
                 </View>
 
-                <View style={styles.googleButtonContainer}>
-                    <GoogleSigninButton
-                        size={GoogleSigninButton.Size.Wide}
-                        color={GoogleSigninButton.Color.Light}
-                        onPress={handleGoogleSignIn}
-                        disabled={isLoading}
-                        style={styles.googleButton}
-                    />
-                </View>
+                <SocialButtons
+                    onGooglePress={handleGoogleSignIn}
+                    onFacebookPress={() => { }}
+                    onApplePress={() => { }}
+                />
 
                 <View style={styles.registerContainer}>
                     <Text style={styles.registerText}>Chưa có tài khoản? </Text>
@@ -282,16 +235,6 @@ const styles = StyleSheet.create({
         color: COLOR.PRIMARY,
         fontSize: 14,
         textDecorationLine: 'underline',
-    },
-    googleButtonContainer: {
-        alignItems: 'center',
-        marginVertical: 10,
-        width: '100%',
-    },
-    googleButton: {
-        width: '100%',
-        height: 40,
-        borderRadius: 8,
     },
 });
 
