@@ -16,7 +16,7 @@ import { COLOR } from "@/src/constants/color";
 import * as Clipboard from 'expo-clipboard';
 import { FONT } from "@/src/constants/font";
 import { router, useLocalSearchParams } from "expo-router";
-import Modal from "react-native-modal";
+const Modal = require("react-native-modal").default;
 import { getReturnRequestById, cancelReturnRequest, getReturnRequestByOrderId } from "@/src/services/return-request.service";
 import { ReturnRequestRes } from "@/src/types/return-request.type";
 import { formatPrice } from "@/src/utils/product";

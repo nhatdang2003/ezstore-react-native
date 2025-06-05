@@ -24,6 +24,7 @@ import {
     OrderStatisticsSummaryResponse,
     MonthlySpendingChartResponse,
     StatusSpendingChartResponse,
+    OrderHistory,
 } from '@/src/types/order.type';
 
 const OrderStatistics = () => {
@@ -37,7 +38,7 @@ const OrderStatistics = () => {
     const [statusChartData, setStatusChartData] = useState<StatusSpendingChartResponse | null>(null);
 
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-    const [orders, setOrders] = useState<Order[]>([]);
+    const [orders, setOrders] = useState<OrderHistory[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [ordersPage, setOrdersPage] = useState(0);
     const [hasMoreOrders, setHasMoreOrders] = useState(true);
