@@ -6,18 +6,26 @@ import { COLOR } from '@/src/constants/color'
 import { FONT } from '@/src/constants/font'
 import CustomButton from '@/src/components/CustomButton'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { deleteTokenFromServerAPI } from '@/src/services/fcm.service'
 
 const AccountTab = () => {
     const router = useRouter()
 
     const handleLogout = async () => {
         try {
-            await AsyncStorage.removeItem('access_token')
-            router.replace('/login')
+            const fcmToken = await AsyncStorage.getItem('fcmToken');
+
+            if (fcmToken) {
+                await deleteTokenFromServerAPI(fcmToken);
+            }
         } catch (error) {
-            console.error('Failed to log out:', error)
+            console.error("Lỗi khi xóa FCM token lúc đăng xuất:", error);
+        } finally {
+            await AsyncStorage.removeItem('access_token');
+            await AsyncStorage.removeItem('fcmToken');
+            router.replace('/(auth)/login');
         }
-    }
+    };
 
     const MenuButton = ({ icon, title, onPress }: { icon: string, title: string, onPress: () => void }) => (
         <CustomButton

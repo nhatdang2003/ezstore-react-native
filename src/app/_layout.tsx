@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useLayoutEffect } from "react";
-import { View } from "react-native";
+import { Alert, PermissionsAndroid, Platform, View } from "react-native";
 import { FONT } from "@/src/constants/font";
 import {
     useFonts,
@@ -12,6 +12,72 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFilterStore } from "@/src/store/filterStore";
 import { connectWebSocket } from "@/src/services/websocket.service";
 import { refreshNotificationCount } from "@/src/services/websocket.service";
+import messaging from '@react-native-firebase/messaging';
+import { sendTokenToServerAPI } from "@/src/services/fcm.service";
+import { markReadNotification } from "@/src/services/notification.service";
+
+// Hàm yêu cầu quyền thông báo
+async function requestUserPermission() {
+    if (Platform.OS === 'ios') {
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (enabled) {
+            console.log('Quyền thông báo trên iOS đã được cấp!');
+            getFCMToken(); // Lấy token sau khi có quyền
+        } else {
+            console.log('Người dùng iOS đã từ chối quyền thông báo.');
+        }
+    } else if (Platform.OS === 'android') {
+        try {
+            if (Platform.Version >= 33) { // Android 13+ (API 33)
+                const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+                if (res === PermissionsAndroid.RESULTS.GRANTED) {
+                    console.log('Quyền thông báo trên Android 13+ đã được cấp!');
+                    getFCMToken(); // Lấy token sau khi có quyền
+                } else {
+                    console.log('Người dùng Android 13+ đã từ chối quyền thông báo.');
+                }
+            } else { // Android < 13
+                const authStatus = await messaging().requestPermission(); // Mặc dù thường được cấp sẵn, gọi để đồng bộ
+                if (authStatus === messaging.AuthorizationStatus.AUTHORIZED) {
+                    console.log('Quyền thông báo trên Android < 13 đã được cấp.');
+                    getFCMToken(); // Lấy token
+                } else {
+                    console.log('Không thể xin quyền thông báo trên Android < 13.');
+                }
+            }
+        } catch (err) {
+            console.warn('Lỗi khi yêu cầu quyền thông báo trên Android:', err);
+        }
+    }
+}
+
+// Hàm lấy FCM token
+async function getFCMToken() {
+    try {
+        const currentToken = await AsyncStorage.getItem('fcmToken'); // Kiểm tra token đã lưu chưa
+        if (currentToken) {
+          console.log('FCM Token đã có sẵn (từ AsyncStorage):', currentToken);
+          return currentToken;
+        }
+
+        const token = await messaging().getToken();
+        if (token) {
+            console.log('FCM Token mới:', token);
+            await AsyncStorage.setItem('fcmToken', token); // Lưu token mới
+            await sendTokenToServerAPI(token);
+        } else {
+            console.log('Không thể lấy FCM token.');
+        }
+        return token;
+    } catch (error) {
+        console.error('Lỗi khi lấy FCM token:', error);
+        return null;
+    }
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +98,8 @@ export default function RootLayout() {
                 await connectWebSocket();
                 // Get initial notification count
                 await refreshNotificationCount();
+                // Request user permission for notifications
+                await requestUserPermission();
                 router.replace("/(tabs)");
             } else {
                 router.replace("/(auth)/login");
@@ -43,6 +111,55 @@ export default function RootLayout() {
             checkUserLoggedIn();
         }
     }, [loaded, error, router]);
+
+    // Lắng nghe sự kiện token được làm mới
+    useEffect(() => {
+        const unsubscribeTokenRefresh = messaging().onTokenRefresh(async newToken => {
+            console.log('FCM Token được làm mới:', newToken);
+            await AsyncStorage.setItem('fcmToken', newToken);
+            await sendTokenToServerAPI(newToken);
+        });
+        return unsubscribeTokenRefresh;
+    }, []);
+
+    // Xử lý khi người dùng nhấn vào thông báo lúc ứng dụng đang ở background hoặc bị tắt
+    useEffect(() => {
+        // Xử lý khi app mở từ trạng thái background
+        messaging().onNotificationOpenedApp(remoteMessage => {
+            console.log(
+                'Thông báo mở app từ background:',
+                JSON.stringify(remoteMessage),
+            );
+            if (remoteMessage && remoteMessage.data) {
+                const { navigateTo, orderId, notificationId } = remoteMessage.data;
+
+                if (navigateTo === 'order_details' && orderId) {
+                    router.push(`/account/order_details?orderId=${orderId}`);
+                    markReadNotification(Number(notificationId));
+                }
+            }
+        });
+
+        // Xử lý khi app mở từ trạng thái bị tắt (quit/killed)
+        messaging()
+            .getInitialNotification()
+            .then(remoteMessage => {
+                if (remoteMessage && remoteMessage.data) {
+                    console.log(
+                        'Thông báo mở app từ quit state:',
+                        JSON.stringify(remoteMessage),
+                    );
+                    const { navigateTo, orderId, notificationId } = remoteMessage.data;
+
+                    if (navigateTo === 'order_details' && orderId) {
+                        setTimeout(() => {
+                            router.push(`/account/order_details?orderId=${orderId}`);
+                            markReadNotification(Number(notificationId));
+                        }, 1000);
+                    }
+                }
+            });
+    }, [router]);
 
     useEffect(() => {
         console.log(segments);
