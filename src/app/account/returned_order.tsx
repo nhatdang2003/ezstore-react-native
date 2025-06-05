@@ -16,8 +16,8 @@ import { COLOR } from "@/src/constants/color";
 import * as Clipboard from 'expo-clipboard';
 import { FONT } from "@/src/constants/font";
 import { router, useLocalSearchParams } from "expo-router";
-import Modal from "react-native-modal";
-import { getReturnRequestById, deleteReturnRequest, getReturnRequestByOrderId } from "@/src/services/return-request.service";
+const Modal = require("react-native-modal").default;
+import { getReturnRequestById, cancelReturnRequest, getReturnRequestByOrderId } from "@/src/services/return-request.service";
 import { ReturnRequestRes } from "@/src/types/return-request.type";
 import { formatPrice } from "@/src/utils/product";
 import ConfirmDialog from "@/src/components/ConfirmModal";
@@ -74,7 +74,7 @@ export default function ReturnedOrderScreen() {
 
         setCancelling(true);
         try {
-            await deleteReturnRequest(returnRequest.id);
+            await cancelReturnRequest(returnRequest.id);
 
             setAlertMessage("Đã hủy yêu cầu hoàn trả thành công");
             setAlertModalVisible(true);
@@ -163,7 +163,7 @@ export default function ReturnedOrderScreen() {
                     >
                         <Ionicons name="chevron-back" size={24} color="black" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Thông tin đơn hàng</Text>
+                    <Text style={styles.headerTitle}>Yêu cầu hoàn trả</Text>
                     <View style={styles.placeholder} />
                 </View>
 

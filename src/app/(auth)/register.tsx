@@ -130,8 +130,7 @@ const RegisterScreen = () => {
     return (
         <ScrollView 
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollViewContent}
-            style={styles.scrollView}
+            contentContainerStyle={{ flexGrow: 1 }}
         >
             <CloseKeyboard>
                 <View style={styles.container}>
@@ -232,7 +231,7 @@ const RegisterScreen = () => {
                             <Text style={styles.loginText}>Đã có tài khoản? </Text>
                             <Text
                                 style={styles.loginLink}
-                                onPress={() => router.navigate("/(auth)/login")}
+                                onPress={() => router.back()}
                             >
                                 Đăng nhập
                             </Text>
@@ -246,8 +245,6 @@ const RegisterScreen = () => {
 
                         <SocialButtons
                             onGooglePress={handleGoogleSignIn}
-                            onFacebookPress={() => { }}
-                            onApplePress={() => { }}
                         />
                     </View>
                 </View>
@@ -265,7 +262,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     container: {
-        flex: 1,
+        flexGrow: 1,
         backgroundColor: "#fff",
         padding: 20,
         minHeight: '100%',

@@ -16,7 +16,6 @@ const LoginScreen = () => {
     const [input, setInput] = useState({
         email: "",
         password: "",
-        remember: false,
     });
 
     const [errors, setErrors] = useState({
@@ -127,11 +126,6 @@ const LoginScreen = () => {
                 </View>
 
                 <View style={styles.forgotPasswordContainer}>
-                    <Checkbox
-                        checked={input.remember}
-                        onCheck={(checked) => setInput({ ...input, remember: checked })}
-                        label="Ghi nhớ mật khẩu"
-                    />
                     <CustomButton
                         title="Quên mật khẩu?"
                         variant="ghost"
@@ -156,8 +150,6 @@ const LoginScreen = () => {
 
                 <SocialButtons
                     onGooglePress={handleGoogleSignIn}
-                    onFacebookPress={() => { }}
-                    onApplePress={() => { }}
                 />
 
                 <View style={styles.registerContainer}>
@@ -224,7 +216,7 @@ const styles = StyleSheet.create({
     },
     forgotPasswordContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
     },
     forgotButton: {
