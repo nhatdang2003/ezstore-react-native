@@ -32,9 +32,9 @@ export default function RootLayout() {
                 await connectWebSocket();
                 // Get initial notification count
                 await refreshNotificationCount();
-                router.navigate("/(tabs)");
+                router.replace("/(tabs)");
             } else {
-                router.navigate("/(auth)/login");
+                router.replace("/(auth)/login");
             }
             await SplashScreen.hideAsync();
         };
