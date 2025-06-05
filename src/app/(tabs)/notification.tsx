@@ -45,6 +45,7 @@ const NotificationScreen = () => {
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
+    const unreadCount = useNotificationStore(state => state.unreadCount);
     const decrementUnreadCount = useNotificationStore(state => state.decrementUnreadCount);
     const [confirmVisible, setConfirmVisible] = useState(false);
 
@@ -255,7 +256,7 @@ const NotificationScreen = () => {
                         <View style={styles.listHeader}>
                             <View style={styles.headerRow}>
                                 <Text style={styles.listHeaderText}>
-                                    {notifications.filter(n => !n.read).length} thông báo chưa đọc
+                                    {unreadCount} thông báo chưa đọc
                                 </Text>
                                 <TouchableOpacity onPress={showConfirmDialog}>
                                     <Text style={styles.markAllText}>Đọc tất cả</Text>
