@@ -6,9 +6,6 @@ import {
     TouchableOpacity,
     ScrollView,
     SafeAreaView,
-    ToastAndroid,
-    Platform,
-    Alert,
     TextInput,
     ActivityIndicator,
 } from "react-native";
@@ -24,6 +21,7 @@ import { getOrderDetail } from "@/src/services/order.service";
 import { createReturnRequest, uploadReturnRequestImage } from "@/src/services/return-request.service";
 import { OrderDetailRes } from "@/src/types/order.type";
 import { formatPrice } from "@/src/utils/product";
+import AlertDialog from "@/src/components/AlertModal";
 
 export default function ReturnFormScreen() {
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -35,6 +33,15 @@ export default function ReturnFormScreen() {
     const [orderDetails, setOrderDetails] = useState<OrderDetailRes | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertTitle, setAlertTitle] = useState('');
+
+    const showAlert = (title: string, message: string) => {
+        setAlertTitle(title);
+        setAlertMessage(message);
+        setAlertVisible(true);
+    };
 
     // Fetch order details when component mounts
     useEffect(() => {
@@ -49,15 +56,7 @@ export default function ReturnFormScreen() {
                 setOrderDetails(response.data);
             } catch (error) {
                 console.error("Error fetching order details:", error);
-                // Show error message
-                if (Platform.OS === "android") {
-                    ToastAndroid.show(
-                        "Không thể lấy thông tin đơn hàng",
-                        ToastAndroid.SHORT
-                    );
-                } else {
-                    Alert.alert("Lỗi", "Không thể lấy thông tin đơn hàng");
-                }
+                showAlert('Lỗi', 'Không thể lấy thông tin đơn hàng');
             } finally {
                 setLoading(false);
             }
@@ -72,14 +71,7 @@ export default function ReturnFormScreen() {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
         if (status !== 'granted') {
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Cần cấp quyền truy cập thư viện ảnh",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Thông báo", "Cần cấp quyền truy cập thư viện ảnh");
-            }
+            showAlert('Thông báo', 'Cần cấp quyền truy cập thư viện ảnh');
             return;
         }
 
@@ -97,14 +89,7 @@ export default function ReturnFormScreen() {
             // Check if adding new images exceeds the limit of 5
             const newImages = result.assets.map(asset => asset.uri);
             if (attachedImages.length + newImages.length > 5) {
-                if (Platform.OS === "android") {
-                    ToastAndroid.show(
-                        "Chỉ được chọn tối đa 5 hình ảnh",
-                        ToastAndroid.SHORT
-                    );
-                } else {
-                    Alert.alert("Thông báo", "Chỉ được chọn tối đa 5 hình ảnh");
-                }
+                showAlert('Thông báo', 'Chỉ được chọn tối đa 5 hình ảnh');
                 // Only add images up to the limit
                 const remainingSlots = 5 - attachedImages.length;
                 setAttachedImages([...attachedImages, ...newImages.slice(0, remainingSlots)]);
@@ -161,26 +146,12 @@ export default function ReturnFormScreen() {
     // Function to handle form submission
     const handleSubmit = async () => {
         if (!orderDetails) {
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Không tìm thấy thông tin đơn hàng",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Lỗi", "Không tìm thấy thông tin đơn hàng");
-            }
+            showAlert('Lỗi', 'Không tìm thấy thông tin đơn hàng');
             return;
         }
 
         if (!bankName || !cardHolderName || !cardNumber || !reason) {
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Vui lòng điền đầy đủ thông tin",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Thông báo", "Vui lòng điền đầy đủ thông tin");
-            }
+            showAlert('Thông báo', 'Vui lòng điền đầy đủ thông tin');
             return;
         }
 
@@ -225,19 +196,11 @@ export default function ReturnFormScreen() {
                 bankName: bankName,
                 accountNumber: cardNumber,
                 accountHolderName: cardHolderName,
-                imageUrls: imageUrls, // Use the array of uploaded image URLs
+                imageUrls: imageUrls,
             };
 
             const response = await createReturnRequest(returnRequestData);
-
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Đã gửi yêu cầu hoàn trả thành công",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Thành công", "Đã gửi yêu cầu hoàn trả thành công");
-            }
+            showAlert('Thành công', 'Đã gửi yêu cầu hoàn trả thành công');
 
             // Navigate to returned order screen with the new return request id
             router.replace({
@@ -249,14 +212,7 @@ export default function ReturnFormScreen() {
             });
         } catch (error) {
             console.error("Error creating return request:", error);
-            if (Platform.OS === "android") {
-                ToastAndroid.show(
-                    "Lỗi khi gửi yêu cầu hoàn trả",
-                    ToastAndroid.SHORT
-                );
-            } else {
-                Alert.alert("Lỗi", "Lỗi khi gửi yêu cầu hoàn trả");
-            }
+            showAlert('Lỗi', 'Lỗi khi gửi yêu cầu hoàn trả');
         } finally {
             setSubmitting(false);
         }
@@ -273,6 +229,12 @@ export default function ReturnFormScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
+            <AlertDialog
+                visible={alertVisible}
+                title={alertTitle}
+                message={alertMessage}
+                onClose={() => setAlertVisible(false)}
+            />
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
@@ -298,15 +260,7 @@ export default function ReturnFormScreen() {
                                     if (!orderDetails?.code) return;
 
                                     await Clipboard.setStringAsync(orderDetails.code);
-                                    // Show feedback based on platform
-                                    if (Platform.OS === "android") {
-                                        ToastAndroid.show(
-                                            "Đã sao chép mã đơn hàng",
-                                            ToastAndroid.SHORT
-                                        );
-                                    } else {
-                                        Alert.alert("Thông báo", "Đã sao chép mã đơn hàng");
-                                    }
+                                    showAlert('Thông báo', 'Đã sao chép mã đơn hàng');
                                 }}
                             >
                                 <Text style={styles.copyButtonText}>SAO CHÉP</Text>

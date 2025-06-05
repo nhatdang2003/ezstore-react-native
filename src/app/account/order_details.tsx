@@ -71,6 +71,12 @@ export default function OrderDetails() {
         return method === "GHN" ? "GHN Express" : "Giao hàng hoả tốc";
     }
 
+    const navigateToReturnForm = () => {
+        if (orderDetail) {
+            router.push(`/account/return_form?orderId=${orderDetail.id}`);
+        }
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -205,21 +211,22 @@ export default function OrderDetails() {
                 <View style={styles.card}>
                     <Text style={styles.supportTitle}>Bạn cần hỗ trợ?</Text>
 
-                    {orderDetail.status === "DELIVERED" && (
-                        <>
-                            <TouchableOpacity style={styles.supportRow}>
-                                <View style={styles.supportOption}>
-                                    <Feather name="rotate-ccw" size={20} color="#666666" />
-                                    <Text style={styles.supportText}>
-                                        Gửi yêu cầu Trả hàng/Hoàn tiền
-                                    </Text>
-                                </View>
-                                <Feather name="chevron-right" size={20} color="#AAAAAA" />
-                            </TouchableOpacity>
+                    {orderDetail.status === "DELIVERED" &&
+                        new Date(orderDetail.statusUpdateTimestamp).getTime() + 1000 * 60 * 60 * 24 * 30 > new Date().getTime() && (
+                            <>
+                                <TouchableOpacity style={styles.supportRow} onPress={navigateToReturnForm}>
+                                    <View style={styles.supportOption}>
+                                        <Feather name="rotate-ccw" size={20} color="#666666" />
+                                        <Text style={styles.supportText}>
+                                            Gửi yêu cầu Trả hàng/Hoàn tiền
+                                        </Text>
+                                    </View>
+                                    <Feather name="chevron-right" size={20} color="#AAAAAA" />
+                                </TouchableOpacity>
 
-                            <View style={styles.divider} />
-                        </>
-                    )}
+                                <View style={styles.divider} />
+                            </>
+                        )}
 
                     <TouchableOpacity style={styles.supportRow}>
                         <View style={styles.supportOption}>

@@ -16,7 +16,7 @@ const FilterScreen = () => {
 
     const handleResetFilters = () => {
         resetFilters();
-        router.back()
+        // router.back()
     }
 
     const filterComponents = [
@@ -29,8 +29,8 @@ const FilterScreen = () => {
             <CustomButton variant='filled' title='Đặt lại' onPress={handleResetFilters}
                 textStyle={{ color: 'white' }}
                 style={{ flex: 1, backgroundColor: 'black' }} />
-            <CustomButton variant='outlined' title='Hủy' onPress={() => router.back()}
-                style={{ flex: 1, borderColor: 'black', borderWidth: 1 }} textStyle={{ color: 'black' }} />
+            {/* <CustomButton variant='outlined' title='Hủy' onPress={() => router.back()}
+                style={{ flex: 1, borderColor: 'black', borderWidth: 1 }} textStyle={{ color: 'black' }} /> */}
         </View>
     ];
 

@@ -8,10 +8,11 @@ import Select from '@/src/components/Select'
 import { COLOR } from '@/src/constants/color'
 import { FONT } from '@/src/constants/font'
 import CustomSwitch from '@/src/components/CustomSwitch'
-import { getShippingProfileById, updateShippingProfile, setDefaultShippingProfile } from '@/src/services/shipping-profile.service'
+import { getShippingProfileById, updateShippingProfile, setDefaultShippingProfile, deleteShippingProfile } from '@/src/services/shipping-profile.service'
 import { ShippingProfile, ShippingProfileReq, ShippingProfileDefaultReq } from '@/src/types/shipping-profile.type'
 import { getProvinces, getDistricts, getWards } from '@/src/services/ghn.service'
 import { Province, District, Ward } from '@/src/types/ghn.type'
+import ConfirmDialog from '@/src/components/ConfirmModal'
 
 const EditAddressScreen = () => {
     const router = useRouter()
@@ -33,6 +34,8 @@ const EditAddressScreen = () => {
         ward: '',
         default: false
     })
+    const [deleting, setDeleting] = useState(false)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
     // State for GHN data
     const [provinces, setProvinces] = useState<Province[]>([])
@@ -231,6 +234,29 @@ const EditAddressScreen = () => {
         }
     }
 
+    // Handle delete shipping profile
+    const handleDeleteAddress = () => {
+        setShowDeleteConfirm(true)
+    }
+
+    const confirmDelete = async () => {
+        try {
+            setDeleting(true)
+            await deleteShippingProfile(address.id)
+            router.back()
+        } catch (err) {
+            console.error("Failed to delete shipping profile:", err)
+            setError("Không thể xoá địa chỉ")
+        } finally {
+            setDeleting(false)
+            setShowDeleteConfirm(false)
+        }
+    }
+
+    const cancelDelete = () => {
+        setShowDeleteConfirm(false)
+    }
+
     // Check if form is valid for submission
     const isFormValid = () => {
         return (
@@ -253,6 +279,13 @@ const EditAddressScreen = () => {
                 <Text style={styles.headerTitle}>Chỉnh sửa địa chỉ</Text>
                 <View />
             </View>
+
+            <ConfirmDialog
+                visible={showDeleteConfirm}
+                message="Bạn có chắc muốn xoá địa chỉ này không?"
+                onCancel={cancelDelete}
+                onConfirm={confirmDelete}
+            />
 
             {loading ? (
                 <View style={styles.loadingContainer}>
@@ -343,6 +376,14 @@ const EditAddressScreen = () => {
 
                         <View style={styles.buttonContainer}>
                             <CustomButton
+                                title="Xoá địa chỉ"
+                                onPress={handleDeleteAddress}
+                                style={styles.deleteButton}
+                                textStyle={styles.deleteButtonText}
+                                disabled={deleting}
+                            />
+
+                            <CustomButton
                                 title="Lưu địa chỉ"
                                 onPress={handleSaveAddress}
                                 style={styles.saveButton}
@@ -404,11 +445,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 16,
-        marginBottom: 30
+        marginBottom: 30,
+        gap: 10
     },
     saveButton: {
         backgroundColor: COLOR.PRIMARY,
         flex: 1,
+    },
+    deleteButton: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#000',
+        flex: 1
+    },
+    deleteButtonText: {
+        color: '#000'
     },
     containerDefault: {
         flexDirection: 'row',

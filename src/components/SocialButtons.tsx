@@ -1,64 +1,44 @@
 import { View, Image, StyleSheet } from 'react-native'
 import React from 'react'
 import CustomButton from './CustomButton'
+import { COLOR } from '@/src/constants/color'
 
 interface SocialButtonsProps {
     onGooglePress?: () => void;
-    onFacebookPress?: () => void;
-    onApplePress?: () => void;
 }
 
 const SocialButtons = ({
     onGooglePress,
-    onFacebookPress,
-    onApplePress
 }: SocialButtonsProps) => {
     return (
         <View style={styles.socialButtons}>
             <CustomButton
+                title='Đăng nhập với Google'
                 style={styles.socialButton}
+                textStyle={styles.socialButtonText}
                 variant='outlined'
                 onPress={onGooglePress || (() => { })}
-            >
-                <Image
-                    source={require('@/src/assets/images/google-logo.png')}
-                    style={styles.socialIcon}
-                />
-            </CustomButton>
-            <CustomButton
-                style={styles.socialButton}
-                variant='outlined'
-                onPress={onFacebookPress || (() => { })}
-            >
-                <Image
-                    source={require('@/src/assets/images/facebook-logo.png')}
-                    style={styles.socialIcon}
-                />
-            </CustomButton>
-            <CustomButton
-                style={styles.socialButton}
-                variant='outlined'
-                onPress={onFacebookPress || (() => { })}
-            >
-                <Image
-                    source={require('@/src/assets/images/apple-logo.png')}
-                    style={styles.socialIcon}
-                />
-            </CustomButton>
+                leftIcon={
+                    <Image
+                        source={require('@/src/assets/images/google-logo.png')}
+                        style={styles.socialIcon}
+                    />
+                }
+            />
         </View>
     )
 }
 
 const styles = StyleSheet.create({
     socialButtons: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 5,
         paddingHorizontal: 10
     },
     socialButton: {
-        flex: 1,
         minHeight: 48,
+    },
+    socialButtonText: {
+        color: '#666666',
+        fontSize: 14,
     },
     socialIcon: {
         width: 24,

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { COLOR } from '@/src/constants/color';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { getNotifications, markReadNotification, markReadAllNotification } from '@/src/services/notification.service';
+import { getNotifications, markReadNotification, markReadAllNotification, getUnreadNotificationCount } from '@/src/services/notification.service';
 import { Notification } from '@/src/types/notification.type';
 import { useNotificationStore } from '@/src/store/notificationStore';
 import ConfirmDialog from '@/src/components/ConfirmModal';
@@ -40,30 +40,72 @@ const NotificationScreen = () => {
     const router = useRouter();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
     const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
-    const decrementUnreadCount = useNotificationStore(state => state.decrementUnreadCount);
     const unreadCount = useNotificationStore(state => state.unreadCount);
+    const decrementUnreadCount = useNotificationStore(state => state.decrementUnreadCount);
     const [confirmVisible, setConfirmVisible] = useState(false);
 
-    const fetchNotifications = async () => {
-        setLoading(true);
+    const fetchUnreadCount = async () => {
         try {
-            const response = await getNotifications();
+            const response = await getUnreadNotificationCount();
             if (response.statusCode === 200) {
-                setNotifications(response.data.notifications);
-                setUnreadCount(response.data.unreadCount);
+                setUnreadCount(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
+
+    const fetchNotifications = async (page: number = 0, shouldAppend: boolean = false) => {
+        if (shouldAppend) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+        }
+
+        try {
+            const response = await getNotifications(page);
+            if (response.statusCode === 200) {
+                const newNotifications = response.data.data;
+                setTotalPages(response.data.meta.pages);
+                
+                if (shouldAppend) {
+                    setNotifications(prev => [...prev, ...newNotifications]);
+                } else {
+                    setNotifications(newNotifications);
+                }
+                
+                setCurrentPage(page);
             }
         } catch (error) {
             console.error('Error fetching notifications:', error);
         } finally {
+            setLoadingMore(false);
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    const handleLoadMore = () => {
+        if (loadingMore || currentPage >= totalPages - 1) return;
+        fetchNotifications(currentPage + 1, true);
+    };
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        fetchNotifications(0, false);
+        fetchUnreadCount();
     };
 
     useFocusEffect(
         useCallback(() => {
             fetchNotifications();
-        }, [unreadCount])
+            fetchUnreadCount();
+        }, [])
     );
 
     const handleNotificationPress = async (notification: Notification) => {
@@ -162,16 +204,22 @@ const NotificationScreen = () => {
 
     const renderEmptyState = () => (
         <View style={styles.emptyContainer}>
-            <Image
-                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2748/2748558.png' }}
-                style={styles.emptyImage}
-            />
+            <Ionicons name="notifications-off-outline" size={80} color="#9e9e9e" />
             <Text style={styles.emptyTitle}>Chưa có thông báo nào</Text>
             <Text style={styles.emptyMessage}>
                 Chúng tôi sẽ thông báo cho bạn khi có điều gì đó quan trọng xảy ra.
             </Text>
         </View>
     );
+
+    const renderFooter = () => {
+        if (!loadingMore) return null;
+        return (
+            <View style={styles.loadingFooter}>
+                <ActivityIndicator size="small" color={COLOR.PRIMARY} />
+            </View>
+        );
+    };
 
     if (loading) {
         return (
@@ -195,19 +243,22 @@ const NotificationScreen = () => {
             {notifications.length > 0 ? (
                 <FlatList
                     showsVerticalScrollIndicator={false}
-                    data={notifications.sort((a, b) => new Date(b.notificationDate).getTime() - new Date(a.notificationDate).getTime())}
+                    data={notifications}
                     renderItem={renderNotificationItem}
                     keyExtractor={item => item.id.toString()}
                     contentContainerStyle={styles.listContainer}
+                    onRefresh={handleRefresh}
+                    refreshing={refreshing}
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={renderFooter}
                     ListHeaderComponent={() => (
                         <View style={styles.listHeader}>
                             <View style={styles.headerRow}>
                                 <Text style={styles.listHeaderText}>
-                                    {notifications.filter(n => !n.read).length} thông báo chưa đọc
+                                    {unreadCount} thông báo chưa đọc
                                 </Text>
-                                <TouchableOpacity
-                                    onPress={showConfirmDialog}
-                                >
+                                <TouchableOpacity onPress={showConfirmDialog}>
                                     <Text style={styles.markAllText}>Đọc tất cả</Text>
                                 </TouchableOpacity>
                             </View>
@@ -343,6 +394,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 8,
+        marginTop: 20,
     },
     emptyMessage: {
         fontSize: 14,
@@ -358,6 +410,10 @@ const styles = StyleSheet.create({
         color: COLOR.PRIMARY,
         fontSize: 14,
         fontWeight: '500',
+    },
+    loadingFooter: {
+        paddingVertical: 20,
+        alignItems: 'center',
     },
 });
 
