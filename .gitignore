@@ -39,3 +39,6 @@ app-example
 
 # local env files
 .env
+
+# keystore
+*.keystore

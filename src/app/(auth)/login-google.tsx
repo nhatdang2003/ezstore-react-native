@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useEffect } from 'react';
 import { useRouter } from "expo-router";
@@ -8,7 +9,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { postGoogleLogin } from '@/src/services/auth.service';
 
-export default function LoginGoogleScreen() {
+const LoginGoogleScreen = () => {
     const router = useRouter();
 
     useEffect(() => {
@@ -62,7 +63,7 @@ export default function LoginGoogleScreen() {
             {/* This screen will be briefly shown while Google Sign-In is processing */}
         </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -70,3 +71,5 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
 });
+
+export default LoginGoogleScreen;
