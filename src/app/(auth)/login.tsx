@@ -10,6 +10,8 @@ import ErrorMessageInput from "@/src/components/ErrorMessageInput";
 import { postLogin } from "@/src/services/auth.service";
 import SocialButtons from "@/src/components/SocialButtons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import messaging from '@react-native-firebase/messaging';
+import { sendTokenToServerAPI } from "@/src/services/fcm.service";
 
 const LoginScreen = () => {
     const router = useRouter();
@@ -46,6 +48,16 @@ const LoginScreen = () => {
 
     const handleSuccessfulLogin = async (token: string) => {
         await AsyncStorage.setItem('access_token', token);
+        // Get FCM token after successful login
+        try {
+            const fcmToken = await messaging().getToken();
+            if (fcmToken) {
+                await AsyncStorage.setItem('fcmToken', fcmToken);
+                await sendTokenToServerAPI(fcmToken);
+            }
+        } catch (error) {
+            console.error('Error getting FCM token after login:', error);
+        }
         router.replace('/(tabs)');
     };
 

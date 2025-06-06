@@ -8,6 +8,8 @@ import {
     statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { postGoogleLogin } from '@/src/services/auth.service';
+import messaging from '@react-native-firebase/messaging';
+import { sendTokenToServerAPI } from '@/src/services/fcm.service';
 
 const LoginGoogleScreen = () => {
     const router = useRouter();
@@ -35,6 +37,18 @@ const LoginGoogleScreen = () => {
                     // @ts-ignore
                     if (response.statusCode === 200) {
                         await AsyncStorage.setItem('access_token', response.data.access_token);
+                        
+                        // Get FCM token after successful Google login
+                        try {
+                            const fcmToken = await messaging().getToken();
+                            if (fcmToken) {
+                                await AsyncStorage.setItem('fcmToken', fcmToken);
+                                await sendTokenToServerAPI(fcmToken);
+                            }
+                        } catch (error) {
+                            console.error('Error getting FCM token after Google login:', error);
+                        }
+                        
                         router.replace('/(tabs)');
                     } else {
                         throw new Error('Login failed');

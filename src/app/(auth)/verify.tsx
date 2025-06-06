@@ -9,6 +9,8 @@ import { getActiveCode, postVerifyActivation, postVerifyRecoverPassword, postRec
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import LoadingOverlay from '@/src/components/LoadingOverlay'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import messaging from '@react-native-firebase/messaging'
+import { sendTokenToServerAPI } from '@/src/services/fcm.service'
 
 const VerifyActivationScreen = () => {
     const { email } = useLocalSearchParams<{ email: string }>()
@@ -39,6 +41,18 @@ const VerifyActivationScreen = () => {
                 } else {
                     const accessToken = verifyResponse.data.access_token;
                     await AsyncStorage.setItem('access_token', accessToken);
+                    
+                    // Get FCM token after successful verification
+                    try {
+                        const fcmToken = await messaging().getToken();
+                        if (fcmToken) {
+                            await AsyncStorage.setItem('fcmToken', fcmToken);
+                            await sendTokenToServerAPI(fcmToken);
+                        }
+                    } catch (error) {
+                        console.error('Error getting FCM token after verification:', error);
+                    }
+                    
                     router.replace('/(tabs)');
                 }
                 return;
