@@ -36,8 +36,10 @@ const LoginGoogleScreen = () => {
                     const response = await postGoogleLogin(serverAuthCode);
                     // @ts-ignore
                     if (response.statusCode === 200) {
-                        await AsyncStorage.setItem('access_token', response.data.access_token);
-                        
+                        await AsyncStorage.multiSet([
+                            ['access_token', response.data.access_token],
+                            ['refresh_token', response.data.refresh_token]
+                        ]);
                         // Get FCM token after successful Google login
                         try {
                             const fcmToken = await messaging().getToken();
