@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, isToday, isYesterday, parseISO } from 'date-fns';
+import { format, isToday, isYesterday, parseISO, addHours } from 'date-fns';
 import { COLOR } from '@/src/constants/color';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { getNotifications, markReadNotification, markReadAllNotification, getUnreadNotificationCount } from '@/src/services/notification.service';
@@ -20,14 +20,21 @@ import ConfirmDialog from '@/src/components/ConfirmModal';
 
 // Hàm hỗ trợ định dạng thời gian
 const formatTimestamp = (dateString: string) => {
-    const date = parseISO(dateString);
+    const date = addHours(parseISO(dateString), 7);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffInMilliseconds = date.getTime() - now.getTime();
+    const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60));
 
-    if (diffInMinutes < 1) return 'Vừa xong';
-    if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
+    if (diffInMinutes > 0) {
+        return format(date, 'dd/MM/yyyy HH:mm');
+    }
 
-    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInPast = Math.abs(diffInMinutes);
+    
+    if (diffInPast < 1) return 'Vừa xong';
+    if (diffInPast < 60) return `${diffInPast} phút trước`;
+
+    const diffInHours = Math.floor(diffInPast / 60);
     if (diffInHours < 24) return `${diffInHours} giờ trước`;
 
     if (isToday(date)) return `Hôm nay lúc ${format(date, 'HH:mm')}`;
@@ -71,6 +78,7 @@ const NotificationScreen = () => {
             const response = await getNotifications(page);
             if (response.statusCode === 200) {
                 const newNotifications = response.data.data;
+                console.log(newNotifications);
                 setTotalPages(response.data.meta.pages);
                 
                 if (shouldAppend) {
