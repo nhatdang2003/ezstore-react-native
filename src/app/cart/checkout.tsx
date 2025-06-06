@@ -22,6 +22,7 @@ import { getOrderPreview, checkoutOrder } from "@/src/services/order.service";
 import { OrderPreviewRes } from "@/src/types/order.type";
 import AlertDialog from "@/src/components/AlertModal";
 import { PaymentMethod, DeliveryMethod } from "@/src/constants/order";
+import { getDefaultShippingProfile } from "@/src/services/shipping-profile.service";
 
 const CheckoutScreen = () => {
   const router = useRouter();
@@ -65,7 +66,7 @@ const CheckoutScreen = () => {
         isUsePoint: usePoints,
       });
 
-      setShippingProfileId(response.data.shippingProfile.id);
+      setShippingProfileId(response.data?.shippingProfile?.id);
       setOrderPreview(response.data);
       setError(null);
     } catch (err) {
@@ -89,6 +90,24 @@ const CheckoutScreen = () => {
       router.back();
     }
   }, [usePoints, selectedDelivery]);
+
+  // Kiểm tra địa chỉ mặc định khi component mount
+  useEffect(() => {
+    const checkDefaultAddress = async () => {
+      try {
+        const response = await getDefaultShippingProfile();
+        if (!response.data) {
+          // Nếu không có địa chỉ mặc định, chuyển hướng đến trang thêm địa chỉ
+          router.replace("/account/add_address");
+        }
+      } catch (error) {
+        console.error("Lỗi khi kiểm tra địa chỉ mặc định:", error);
+        router.replace("/account/add_address");
+      }
+    };
+
+    checkDefaultAddress();
+  }, []);
 
   // Xử lý nút thanh toán
   const handlePayment = async () => {
