@@ -46,8 +46,7 @@ const LoginScreen = () => {
         return !emailError && !passwordError;
     };
 
-    const handleSuccessfulLogin = async (token: string) => {
-        await AsyncStorage.setItem('access_token', token);
+    const handleSuccessfulLogin = async () => {
         // Get FCM token after successful login
         try {
             const fcmToken = await messaging().getToken();
@@ -72,7 +71,11 @@ const LoginScreen = () => {
             });
             // @ts-ignore
             if (response.statusCode === 200) {
-                await handleSuccessfulLogin(response.data.access_token);
+                await AsyncStorage.multiSet([
+                    ['access_token', response.data.access_token || ''],
+                    ['refresh_token', response.data.refresh_token || '']
+                ]);
+                handleSuccessfulLogin();
             } else {
                 setErrors(prev => ({
                     ...prev,

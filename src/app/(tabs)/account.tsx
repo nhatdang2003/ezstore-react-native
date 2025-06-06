@@ -22,6 +22,7 @@ const AccountTab = () => {
             console.error("Lỗi khi xóa FCM token lúc đăng xuất:", error);
         } finally {
             await AsyncStorage.removeItem('access_token');
+            await AsyncStorage.removeItem('refresh_token');
             await AsyncStorage.removeItem('fcmToken');
             router.replace('/(auth)/login');
         }

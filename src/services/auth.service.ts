@@ -40,3 +40,8 @@ export const postGoogleLogin = (data: string) => {
     const url = `api/v1/auth/google`
     return axios.post(url, { code: data })
 }
+
+export const refreshToken = (refresh_token: string) => {
+    const url = `api/v1/auth/refresh?refresh_token=${refresh_token}`
+    return axios.get(url)
+}
