@@ -12,7 +12,7 @@ const AccountTab = () => {
 
     const handleLogout = async () => {
         try {
-            await AsyncStorage.removeItem('access_token')
+            await AsyncStorage.multiRemove(['access_token', 'refresh_token'])
             router.replace('/login')
         } catch (error) {
             console.error('Failed to log out:', error)

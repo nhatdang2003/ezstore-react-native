@@ -57,7 +57,10 @@ const LoginScreen = () => {
             console.log(response);
             // @ts-ignore
             if (response.statusCode === 200) {
-                await AsyncStorage.setItem('access_token', response.data.access_token || '')
+                await AsyncStorage.multiSet([
+                    ['access_token', response.data.access_token || ''],
+                    ['refresh_token', response.data.refresh_token || '']
+                ]);
                 router.replace('/(tabs)');
             } else {
                 setErrors(prev => ({
