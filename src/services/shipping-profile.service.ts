@@ -31,3 +31,8 @@ export const deleteShippingProfile = (id: number): Promise<Response<void>> => {
     const url = `/api/v1/shipping-profiles/${id}`
     return axios.delete(url)
 }
+
+export const getDefaultShippingProfile = (): Promise<Response<ShippingProfile>> => {
+    const url = `/api/v1/shipping-profiles/default`
+    return axios.get(url)
+}
