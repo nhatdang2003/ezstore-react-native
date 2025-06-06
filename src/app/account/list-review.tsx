@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, ScrollView, Modal, Dimensions, FlatList } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, ScrollView } from "react-native";
 import { Ionicons, SimpleLineIcons } from "@expo/vector-icons";
 import { FONT } from "@/src/constants/font";
 import { router, useLocalSearchParams } from "expo-router";
@@ -7,23 +7,13 @@ import { COLOR } from "@/src/constants/color";
 import { getOrderReviews } from "@/src/services/order.service";
 import { OrderReviewResponse } from "@/src/types/review.type";
 import { formatDateString } from "@/src/utils/date";
-import { Video, ResizeMode } from 'expo-av';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-interface MediaItem {
-    type: 'image' | 'video';
-    url: string;
-}
+import MediaViewer from "@/src/components/MediaViewer";
 
 export default function ReviewScreen() {
     const { orderId } = useLocalSearchParams();
     const [reviews, setReviews] = useState<OrderReviewResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
-    const [currentReviewMedia, setCurrentReviewMedia] = useState<MediaItem[]>([]);
-    const flatListRef = useRef<FlatList>(null);
 
     useEffect(() => {
         const fetchReviews = async () => {
@@ -57,35 +47,6 @@ export default function ReviewScreen() {
             />
         ));
     };
-
-    const openMediaViewer = (review: OrderReviewResponse, initialIndex: number) => {
-        const mediaItems: MediaItem[] = [
-            ...(review.imageUrls?.map(url => ({ type: 'image' as const, url })) || []),
-            ...(review.videoUrl ? [{ type: 'video' as const, url: review.videoUrl }] : [])
-        ];
-        setCurrentReviewMedia(mediaItems);
-        setSelectedMediaIndex(initialIndex);
-    };
-
-    const renderMediaItem = ({ item }: { item: MediaItem }) => (
-        <View style={styles.fullScreenMediaContainer}>
-            {item.type === 'video' ? (
-                <Video
-                    source={{ uri: item.url }}
-                    style={styles.fullScreenVideo}
-                    useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
-                    shouldPlay={false}
-                />
-            ) : (
-                <Image
-                    source={{ uri: item.url }}
-                    style={styles.fullScreenImage}
-                    resizeMode="contain"
-                />
-            )}
-        </View>
-    );
 
     if (loading) {
         return (
@@ -121,6 +82,11 @@ export default function ReviewScreen() {
         );
     }
 
+    const isValidUrl = (url?: string): boolean => {
+        if (!url) return false;
+        return url.trim().length > 0 && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://'));
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.headerTab}>
@@ -141,10 +107,14 @@ export default function ReviewScreen() {
                         <View key={index} style={styles.reviewContainer}>
                             <View style={styles.reviewHeader}>
                                 <View style={styles.userInfo}>
-                                    <Image
-                                        source={{ uri: review.avatar || "/placeholder.svg?height=40&width=40" }}
-                                        style={styles.avatar}
-                                    />
+                                    {isValidUrl(review.avatar) ? (
+                                        <Image
+                                            source={{ uri: review.avatar }}
+                                            style={styles.avatar}
+                                        />
+                                    ) : (
+                                        <View style={[styles.avatar, styles.placeholderAvatar]} />
+                                    )}
                                     <View>
                                         <Text style={styles.username}>
                                             {review.firstName} {review.lastName}
@@ -174,42 +144,30 @@ export default function ReviewScreen() {
                             {/* Media Section */}
                             {(review.imageUrls?.length > 0 || review.videoUrl) && (
                                 <View style={styles.mediaContainer}>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                        {review.imageUrls?.map((imageUrl, imgIndex) => (
-                                            <TouchableOpacity
-                                                key={`img-${imgIndex}`}
-                                                onPress={() => openMediaViewer(review, imgIndex)}
-                                            >
-                                                <Image
-                                                    source={{ uri: imageUrl }}
-                                                    style={styles.mediaImage}
-                                                />
-                                            </TouchableOpacity>
-                                        ))}
-                                        {review.videoUrl && (
-                                            <TouchableOpacity
-                                                onPress={() => openMediaViewer(review, review.imageUrls?.length || 0)}
-                                            >
-                                                <View style={styles.videoContainer}>
-                                                    <Video
-                                                        source={{ uri: review.videoUrl }}
-                                                        style={styles.mediaVideo}
-                                                        useNativeControls
-                                                        resizeMode={ResizeMode.COVER}
-                                                        shouldPlay={false}
-                                                    />
-                                                </View>
-                                            </TouchableOpacity>
-                                        )}
-                                    </ScrollView>
+                                    <MediaViewer 
+                                        mediaItems={[
+                                            ...(review.imageUrls?.filter(url => isValidUrl(url)).map(url => ({ 
+                                                type: 'image' as const, 
+                                                url: url as string 
+                                            })) || []),
+                                            ...(isValidUrl(review.videoUrl) ? [{ 
+                                                type: 'video' as const, 
+                                                url: review.videoUrl 
+                                            }] : [])
+                                        ]} 
+                                    />
                                 </View>
                             )}
 
                             <View style={styles.productContainer}>
-                                <Image
-                                    source={{ uri: review.variantImage || "/placeholder.svg?height=80&width=80" }}
-                                    style={styles.productImage}
-                                />
+                                {isValidUrl(review.variantImage) ? (
+                                    <Image
+                                        source={{ uri: review.variantImage }}
+                                        style={styles.productImage}
+                                    />
+                                ) : (
+                                    <View style={[styles.productImage, styles.placeholderImage]} />
+                                )}
                                 <View style={styles.productInfo}>
                                     <Text style={styles.productName} numberOfLines={2}>
                                         {review.productName}
@@ -225,48 +183,6 @@ export default function ReviewScreen() {
                     ))
                 )}
             </ScrollView>
-
-            {/* Fullscreen Media Modal */}
-            <Modal
-                visible={selectedMediaIndex !== null}
-                transparent={true}
-                onRequestClose={() => setSelectedMediaIndex(null)}
-            >
-                <View style={styles.modalContainer}>
-                    <TouchableOpacity
-                        style={styles.closeButton}
-                        onPress={() => setSelectedMediaIndex(null)}
-                    >
-                        <Ionicons name="close" size={28} color="white" />
-                    </TouchableOpacity>
-
-                    <View style={styles.mediaCountContainer}>
-                        <Text style={styles.mediaCountText}>
-                            {selectedMediaIndex !== null ? `${selectedMediaIndex + 1}/${currentReviewMedia.length}` : ''}
-                        </Text>
-                    </View>
-
-                    <FlatList
-                        ref={flatListRef}
-                        data={currentReviewMedia}
-                        renderItem={renderMediaItem}
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        initialScrollIndex={selectedMediaIndex || 0}
-                        getItemLayout={(data, index) => ({
-                            length: screenWidth,
-                            offset: screenWidth * index,
-                            index,
-                        })}
-                        onScroll={e => {
-                            const newIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
-                            setSelectedMediaIndex(newIndex);
-                        }}
-                        scrollEventThrottle={16}
-                    />
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }
@@ -319,6 +235,9 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 8,
     },
+    placeholderAvatar: {
+        backgroundColor: '#f0f0f0',
+    },
     username: {
         fontSize: 16,
         fontWeight: "500",
@@ -346,21 +265,6 @@ const styles = StyleSheet.create({
         color: "#333",
         lineHeight: 20,
     },
-    responseContainer: {
-        backgroundColor: "#F8F8F8",
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    responseTitle: {
-        fontWeight: "600",
-        marginBottom: 8,
-    },
-    responseText: {
-        color: "#555",
-        marginBottom: 4,
-        lineHeight: 20,
-    },
     productContainer: {
         flexDirection: "row",
         backgroundColor: "#F8F8F8",
@@ -373,6 +277,9 @@ const styles = StyleSheet.create({
         height: 80,
         borderRadius: 4,
         marginRight: 12,
+    },
+    placeholderImage: {
+        backgroundColor: '#f0f0f0',
     },
     productName: {
         flex: 1,
@@ -417,62 +324,5 @@ const styles = StyleSheet.create({
     mediaContainer: {
         marginBottom: 16,
     },
-    mediaImage: {
-        width: 120,
-        height: 120,
-        borderRadius: 8,
-        marginRight: 8,
-    },
-    videoContainer: {
-        width: 120,
-        height: 120,
-        borderRadius: 8,
-        marginRight: 8,
-        backgroundColor: '#000',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    mediaVideo: {
-        width: '100%',
-        height: '100%',
-    },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    },
-    fullScreenMediaContainer: {
-        width: screenWidth,
-        height: screenHeight,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    fullScreenImage: {
-        width: screenWidth,
-        height: screenHeight,
-    },
-    fullScreenVideo: {
-        width: screenWidth,
-        height: screenWidth * (9/16), // 16:9 aspect ratio
-    },
-    closeButton: {
-        position: 'absolute',
-        top: 40,
-        right: 20,
-        zIndex: 1,
-        padding: 10,
-    },
-    mediaCountContainer: {
-        position: 'absolute',
-        top: 40,
-        left: 20,
-        zIndex: 1,
-        padding: 10,
-    },
-    mediaCountText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-})
+});
 

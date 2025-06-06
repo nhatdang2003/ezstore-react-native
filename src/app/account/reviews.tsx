@@ -22,6 +22,7 @@ import { getOrderReviews, createOrderReview, updateOrderReview, getReviewUploadS
 import { OrderReviewRequest, OrderReviewResponse, ReviewUploadSignUrlReq } from "@/src/types/review.type"
 import AlertDialog from "@/src/components/AlertModal"
 import * as ImagePicker from 'expo-image-picker';
+import MediaViewer, { MediaItem } from '@/src/components/MediaViewer'
 
 export default function ProductReviewScreen() {
     const router = useRouter()
@@ -435,36 +436,16 @@ export default function ProductReviewScreen() {
 
                 {/* Photo/Video Upload */}
                 <View style={styles.uploadSection}>
-                    {/* <Text style={styles.uploadTitle}>
-                        Thêm ít nhất 1 hình ảnh/video về sản phẩm
-                        <Text style={styles.bonusText}>
-                            {" "}
-                            +200 <FontAwesome name="circle" size={14} color="#FFB800" />
-                        </Text>
-                    </Text> */}
-
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                        {mediaFiles.map((file, index) => (
-                            <View key={index} style={styles.mediaPreviewContainer}>
-                                {file.type === 'video' ? (
-                                    <Video
-                                        source={{ uri: file.uri }}
-                                        style={styles.mediaPreview}
-                                        resizeMode={ResizeMode.COVER}
-                                        shouldPlay={false}
-                                    />
-                                ) : (
-                                    <Image source={{ uri: file.uri }} style={styles.mediaPreview} />
-                                )}
-                                <TouchableOpacity
-                                    style={styles.removeMediaButton}
-                                    onPress={() => removeMedia(index)}
-                                >
-                                    <Ionicons name="close-circle" size={24} color="white" />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </ScrollView>
+                    {mediaFiles.length > 0 && (
+                        <MediaViewer 
+                            mediaItems={mediaFiles.map(file => ({
+                                type: file.type,
+                                url: file.uri
+                            }))}
+                            onRemove={removeMedia}
+                            editable={true}
+                        />
+                    )}
 
                     <View style={styles.uploadOptions}>
                         <TouchableOpacity
@@ -769,15 +750,6 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: "#EEEEEE",
     },
-    uploadTitle: {
-        fontSize: 14,
-        color: "#333333",
-        marginBottom: 12,
-    },
-    bonusText: {
-        color: COLOR.PRIMARY,
-        fontWeight: "bold",
-    },
     uploadOptions: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -862,27 +834,6 @@ const styles = StyleSheet.create({
     courierName: {
         fontSize: 14,
         color: "#555555",
-    },
-    mediaPreviewScroll: {
-        paddingVertical: 8,
-        marginBottom: 16,
-    },
-    mediaPreviewContainer: {
-        marginRight: 8,
-        position: 'relative',
-    },
-    mediaPreview: {
-        width: 100,
-        height: 100,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
-    },
-    removeMediaButton: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 12,
     },
     uploadOptionDisabled: {
         borderColor: '#eee',
