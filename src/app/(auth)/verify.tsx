@@ -11,6 +11,7 @@ import LoadingOverlay from '@/src/components/LoadingOverlay'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import messaging from '@react-native-firebase/messaging'
 import { sendTokenToServerAPI } from '@/src/services/fcm.service'
+import { connectWebSocket, refreshNotificationCount } from '@/src/services/websocket.service'
 
 const VerifyActivationScreen = () => {
     const { email } = useLocalSearchParams<{ email: string }>()
@@ -57,6 +58,10 @@ const VerifyActivationScreen = () => {
                         console.error('Error getting FCM token after verification:', error);
                     }
                     
+                    // Initialize WebSocket connection
+                    await connectWebSocket();
+                    // Get initial notification count
+                    await refreshNotificationCount();
                     router.replace('/(tabs)');
                 }
                 return;

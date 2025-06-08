@@ -10,6 +10,7 @@ import {
 import { postGoogleLogin } from '@/src/services/auth.service';
 import messaging from '@react-native-firebase/messaging';
 import { sendTokenToServerAPI } from '@/src/services/fcm.service';
+import { connectWebSocket, refreshNotificationCount } from '@/src/services/websocket.service';
 
 const LoginGoogleScreen = () => {
     const router = useRouter();
@@ -50,7 +51,10 @@ const LoginGoogleScreen = () => {
                         } catch (error) {
                             console.error('Error getting FCM token after Google login:', error);
                         }
-                        
+                        // Initialize WebSocket connection
+                        await connectWebSocket();
+                        // Get initial notification count
+                        await refreshNotificationCount();
                         router.replace('/(tabs)');
                     } else {
                         throw new Error('Login failed');

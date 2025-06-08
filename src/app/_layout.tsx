@@ -82,30 +82,36 @@ export default function RootLayout() {
         [FONT.LORA_MEDIUM]: Lora_500Medium,
     });
 
-    // Request notification permission at app startup
     useEffect(() => {
-        requestUserPermission();
-    }, []);
-
-    useEffect(() => {
-        const checkUserLoggedIn = async () => {
-            const access_token = await AsyncStorage.getItem("access_token");
-            if (access_token) {
-                // Initialize WebSocket connection
-                await connectWebSocket();
-                // Get initial notification count
-                await refreshNotificationCount();
-                // Get FCM token if user is logged in
-                await getFCMToken();
-                router.replace("/(tabs)");
-            } else {
+        const initializeApp = async () => {
+            try {
+                // First request permissions
+                await requestUserPermission();
+                
+                // Then check authentication
+                const access_token = await AsyncStorage.getItem("access_token");
+                if (access_token) {
+                    // Initialize WebSocket connection
+                    await connectWebSocket();
+                    // Get initial notification count
+                    await refreshNotificationCount();
+                    // Get FCM token if user is logged in
+                    await getFCMToken();
+                    router.replace("/(tabs)");
+                } else {
+                    router.replace("/(auth)/login");
+                }
+                await SplashScreen.hideAsync();
+            } catch (error) {
+                console.error("Error during app initialization:", error);
+                // In case of error, default to login screen
                 router.replace("/(auth)/login");
+                await SplashScreen.hideAsync();
             }
-            await SplashScreen.hideAsync();
         };
 
         if (loaded || error) {
-            checkUserLoggedIn();
+            initializeApp();
         }
     }, [loaded, error, router]);
 

@@ -20,7 +20,7 @@ import ConfirmDialog from '@/src/components/ConfirmModal';
 
 // Hàm hỗ trợ định dạng thời gian
 const formatTimestamp = (dateString: string) => {
-    const date = addHours(parseISO(dateString), 7);
+    const date = addHours(parseISO(dateString), 0);
     const now = new Date();
     const diffInMilliseconds = date.getTime() - now.getTime();
     const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60));
@@ -78,11 +78,15 @@ const NotificationScreen = () => {
             const response = await getNotifications(page);
             if (response.statusCode === 200) {
                 const newNotifications = response.data.data;
-                console.log(newNotifications);
                 setTotalPages(response.data.meta.pages);
                 
                 if (shouldAppend) {
-                    setNotifications(prev => [...prev, ...newNotifications]);
+                    // Check for duplicates before appending
+                    setNotifications(prev => {
+                        const existingIds = new Set(prev.map(n => n.id));
+                        const uniqueNewNotifications = newNotifications.filter(n => !existingIds.has(n.id));
+                        return [...prev, ...uniqueNewNotifications];
+                    });
                 } else {
                     setNotifications(newNotifications);
                 }
@@ -253,7 +257,7 @@ const NotificationScreen = () => {
                     showsVerticalScrollIndicator={false}
                     data={notifications}
                     renderItem={renderNotificationItem}
-                    keyExtractor={item => item.id.toString()}
+                    keyExtractor={item => `notification-${item.id}-${item.notificationDate}`}
                     contentContainerStyle={styles.listContainer}
                     onRefresh={handleRefresh}
                     refreshing={refreshing}

@@ -12,6 +12,7 @@ import SocialButtons from "@/src/components/SocialButtons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import messaging from '@react-native-firebase/messaging';
 import { sendTokenToServerAPI } from "@/src/services/fcm.service";
+import { connectWebSocket, refreshNotificationCount } from "@/src/services/websocket.service";
 
 const LoginScreen = () => {
     const router = useRouter();
@@ -75,6 +76,10 @@ const LoginScreen = () => {
                     ['access_token', response.data.access_token || ''],
                     ['refresh_token', response.data.refresh_token || '']
                 ]);
+                // Initialize WebSocket connection
+                await connectWebSocket();
+                // Get initial notification count
+                await refreshNotificationCount();
                 handleSuccessfulLogin();
             } else {
                 setErrors(prev => ({
