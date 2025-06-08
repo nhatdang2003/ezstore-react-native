@@ -10,6 +10,7 @@ import ErrorMessageInput from "@/src/components/ErrorMessageInput";
 import { postLogin } from "@/src/services/auth.service";
 import SocialButtons from "@/src/components/SocialButtons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { connectWebSocket, refreshNotificationCount } from "@/src/services/websocket.service";
 
 const LoginScreen = () => {
     const router = useRouter();
@@ -61,6 +62,10 @@ const LoginScreen = () => {
                     ['access_token', response.data.access_token || ''],
                     ['refresh_token', response.data.refresh_token || '']
                 ]);
+                // Initialize WebSocket connection
+                await connectWebSocket();
+                // Get initial notification count
+                await refreshNotificationCount();
                 router.replace('/(tabs)');
             } else {
                 setErrors(prev => ({
