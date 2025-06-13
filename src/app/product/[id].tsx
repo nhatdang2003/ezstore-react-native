@@ -21,6 +21,7 @@ import {
     getViewedProductIds,
     getViewedProducts,
     getProductReviews,
+    productLogViewed,
 } from "@/src/services/product.service";
 import {
     Product,
@@ -69,6 +70,9 @@ const ProductDetailScreen = () => {
         const fetchProductData = async () => {
             try {
                 setLoading(true);
+
+                // Log product view
+                productLogViewed(Number(id));
 
                 // Lấy chi tiết sản phẩm
                 const productResponse = await getProductDetail(Number(id));
