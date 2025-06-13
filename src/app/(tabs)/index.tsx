@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import HomeCarousel from '@/src/components/HomeCarousel'
 import CategoryCarousel from '@/src/components/CategoryCarousel'
 import SectionHeader from '@/src/components/SectionHeader'
-import { getFeaturedProducts, getNewProducts, getDiscountedProducts, getBestSellerProducts } from '@/src/services/product.service'
+import { getFeaturedProducts, getNewProducts, getDiscountedProducts, getBestSellerProducts, getRecommendedForYou } from '@/src/services/product.service'
 import { Product } from '@/src/types/product.type'
 import { ProductCardProps } from '@/src/types/product.type'
 import { router, useFocusEffect } from 'expo-router'
@@ -14,11 +14,13 @@ import { getUnreadNotificationCount } from '@/src/services/notification.service'
 import { useNotificationStore } from '@/src/store/notificationStore'
 
 const HomeTab = () => {
+    const [recommendedForYou, setRecommendedForYou] = useState<ProductCardProps[]>([])
     const [featuredProducts, setFeaturedProducts] = useState<ProductCardProps[]>([])
     const [bestSellerProducts, setBestSellerProducts] = useState<ProductCardProps[]>([])
     const [newProducts, setNewProducts] = useState<ProductCardProps[]>([])
     const [discountedProducts, setDiscountedProducts] = useState<ProductCardProps[]>([])
     const [loading, setLoading] = useState(true)
+    const [loadingRecommended, setLoadingRecommended] = useState(true)
     const setCartCount = useCartStore(state => state.setCartCount);
     const setUnreadCount = useNotificationStore(state => state.setUnreadCount);
 
@@ -48,7 +50,22 @@ const HomeTab = () => {
 
     useEffect(() => {
         fetchAllProducts()
+        fetchRecommendedProducts()
     }, [])
+
+    const fetchRecommendedProducts = async () => {
+        setLoadingRecommended(true)
+        try {
+            const recommendedForYouResponse = await getRecommendedForYou()
+            if (recommendedForYouResponse.statusCode === 200) {
+                setRecommendedForYou(formatProducts(recommendedForYouResponse.data))
+            }
+        } catch (error) {
+            console.error('Error fetching recommended products:', error)
+        } finally {
+            setLoadingRecommended(false)
+        }
+    }
 
     const fetchAllProducts = async () => {
         setLoading(true)
@@ -57,7 +74,7 @@ const HomeTab = () => {
                 getFeaturedProducts(),
                 getNewProducts(),
                 getDiscountedProducts(),
-                getBestSellerProducts()
+                getBestSellerProducts(),
             ])
 
             if (featured.statusCode === 200) {
@@ -104,6 +121,14 @@ const HomeTab = () => {
                         <CategoryCarousel />
                     </View>
                     <View style={styles.sectionsContainer}>
+                        <SectionHeader
+                            title='Gợi ý cho bạn'
+                            onViewAll={() => {
+                                router.navigate('/(tabs)/store')
+                            }}
+                            data={recommendedForYou}
+                            loading={loadingRecommended}
+                        />
                         <SectionHeader
                             title='Nổi bật'
                             onViewAll={() => {

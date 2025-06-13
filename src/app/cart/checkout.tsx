@@ -6,17 +6,14 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
-  StatusBar,
   ScrollView,
-  Animated,
-  Pressable,
   ActivityIndicator,
   TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { FONT } from "@/src/constants/font";
-import { useLocalSearchParams, useRouter, useSegments } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import CustomSwitch from "@/src/components/CustomSwitch";
 import { getOrderPreview, checkoutOrder } from "@/src/services/order.service";
 import { OrderPreviewRes } from "@/src/types/order.type";
@@ -26,7 +23,6 @@ import { getDefaultShippingProfile } from "@/src/services/shipping-profile.servi
 
 const CheckoutScreen = () => {
   const router = useRouter();
-  const segments = useSegments();
   const params = useLocalSearchParams();
 
   // Lấy cartItemIds từ params
@@ -90,6 +86,13 @@ const CheckoutScreen = () => {
       router.back();
     }
   }, [usePoints, selectedDelivery]);
+
+  // Handle delivery method when shipping profile changes
+  useEffect(() => {
+    if (orderPreview?.shippingProfile?.provinceId !== 202 && selectedDelivery === DeliveryMethod.EXPRESS) {
+      setSelectedDelivery(DeliveryMethod.GHN);
+    }
+  }, [orderPreview?.shippingProfile?.provinceId]);
 
   // Kiểm tra địa chỉ mặc định khi component mount
   useEffect(() => {
@@ -343,27 +346,29 @@ const CheckoutScreen = () => {
             </View>
           </TouchableOpacity>
 
-          {/* EXPRESS Option */}
-          <TouchableOpacity
-            style={styles.paymentOption}
-            onPress={() => setSelectedDelivery(DeliveryMethod.EXPRESS)}
-          >
-            <View style={styles.paymentIconContainer}>
-              <MaterialCommunityIcons name="rocket" size={30} color="black" />
-            </View>
-            <Text style={styles.paymentText}>Giao hàng hỏa tốc</Text>
-            <View
-              style={[
-                styles.radioButton,
-                selectedDelivery === DeliveryMethod.EXPRESS &&
-                styles.radioButtonSelected,
-              ]}
+          {/* EXPRESS Option - Only show for HCM */}
+          {orderPreview?.shippingProfile?.provinceId === 202 && (
+            <TouchableOpacity
+              style={styles.paymentOption}
+              onPress={() => setSelectedDelivery(DeliveryMethod.EXPRESS)}
             >
-              {selectedDelivery === DeliveryMethod.EXPRESS && (
-                <View style={styles.radioButtonInner} />
-              )}
-            </View>
-          </TouchableOpacity>
+              <View style={styles.paymentIconContainer}>
+                <MaterialCommunityIcons name="rocket" size={30} color="black" />
+              </View>
+              <Text style={styles.paymentText}>Giao hàng hỏa tốc</Text>
+              <View
+                style={[
+                  styles.radioButton,
+                  selectedDelivery === DeliveryMethod.EXPRESS &&
+                  styles.radioButtonSelected,
+                ]}
+              >
+                {selectedDelivery === DeliveryMethod.EXPRESS && (
+                  <View style={styles.radioButtonInner} />
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Payment Section */}

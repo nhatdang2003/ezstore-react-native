@@ -81,6 +81,11 @@ export const getProducts = async ({
     return axios.get(url);
 };
 
+export const getRecommendedForYou = (): Promise<Response<Product[]>> => {
+    const url = `api/v1/products/recommendations/for-you?limit=8`
+    return axios.get(url);
+};
+
 export const getFeaturedProducts = (): Promise<PaginatedResponse<Product>> => {
     const url = `api/v1/products?filter=isFeatured&size=8`
     return axios.get(url);
@@ -186,4 +191,9 @@ export const getProductByIds = async ({
 }): Promise<PaginatedResponse<ProductDetail>> => {
     const url = `api/v1/products?filter=id in [${ids.join(',')}]&page=${page}&size=${pageSize}`;
     return axios.get(url);
+}
+
+export const productLogViewed = async (productId: number): Promise<void> => {
+    const url = `api/v1/products/${productId}/log-view`
+    return axios.post(url)
 }
