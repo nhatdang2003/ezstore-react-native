@@ -13,20 +13,25 @@ import {
     Alert,
     ActivityIndicator,
 } from "react-native"
+import { Video, ResizeMode } from 'expo-av';
 import { Ionicons, FontAwesome, SimpleLineIcons } from "@expo/vector-icons"
 import { useRouter, useLocalSearchParams } from "expo-router"
 import { FONT } from "@/src/constants/font"
 import { COLOR } from "@/src/constants/color"
-import { getOrderReviews, createOrderReview, updateOrderReview } from "@/src/services/order.service"
-import { OrderReviewRequest, OrderReviewResponse } from "@/src/types/review.type"
+import { getOrderReviews, createOrderReview, updateOrderReview, getReviewUploadSignUrl } from "@/src/services/order.service"
+import { OrderReviewRequest, OrderReviewResponse, ReviewUploadSignUrlReq } from "@/src/types/review.type"
 import AlertDialog from "@/src/components/AlertModal"
+import * as ImagePicker from 'expo-image-picker';
+import MediaViewer, { MediaItem } from '@/src/components/MediaViewer'
 
 export default function ProductReviewScreen() {
     const router = useRouter()
     const params = useLocalSearchParams()
     const [mediaFiles, setMediaFiles] = useState<Array<{
         type: 'image' | 'video',
-        uri: string
+        uri: string,
+        fileName: string,
+        isExisting?: boolean
     }>>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -90,6 +95,30 @@ export default function ProductReviewScreen() {
         }
     }, [orderId])
 
+    useEffect(() => {
+        // Load existing media files in edit mode
+        if (isEditMode && lineItemId && orderReviews.length > 0) {
+            const review = orderReviews.find(r => r.lineItemId === lineItemId);
+            if (review) {
+                const existingMedia = [
+                    ...(review.imageUrls?.map((url, index) => ({
+                        type: 'image' as const,
+                        uri: url,
+                        fileName: `existing_image_${index}.jpg`,
+                        isExisting: true
+                    })) || []),
+                    ...(review.videoUrl ? [{
+                        type: 'video' as const,
+                        uri: review.videoUrl,
+                        fileName: 'existing_video.mp4',
+                        isExisting: true
+                    }] : [])
+                ];
+                setMediaFiles(existingMedia);
+            }
+        }
+    }, [isEditMode, lineItemId, orderReviews]);
+
     const fetchOrderReviews = async (id: number) => {
         try {
             setIsLoading(true)
@@ -144,6 +173,152 @@ export default function ProductReviewScreen() {
         }));
     }
 
+    // Function to pick images from library
+    const pickImages = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để chọn hình ảnh');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                selectionLimit: 5 - getImagesCount(),
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets) {
+                const newImages = result.assets.map(asset => ({
+                    type: 'image' as const,
+                    uri: asset.uri,
+                    fileName: asset.fileName || `image_${Date.now()}.jpg`
+                }));
+                
+                setMediaFiles(prev => [...prev, ...newImages]);
+            }
+        } catch (error) {
+            console.error('Error picking images:', error);
+            Alert.alert('Lỗi', 'Không thể chọn hình ảnh');
+        }
+    };
+
+    // Function to pick video from library
+    const pickVideo = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để chọn video');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                allowsEditing: true,
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets[0]) {
+                const asset = result.assets[0];
+                const newVideo = {
+                    type: 'video' as const,
+                    uri: asset.uri,
+                    fileName: asset.fileName || `video_${Date.now()}.mp4`
+                };
+                
+                setMediaFiles(prev => [...prev, newVideo]);
+            }
+        } catch (error) {
+            console.error('Error picking video:', error);
+            Alert.alert('Lỗi', 'Không thể chọn video');
+        }
+    };
+
+    // Function to remove media file
+    const removeMedia = (index: number) => {
+        setMediaFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Function to upload files to cloud storage
+    const uploadFiles = async () => {
+        if (mediaFiles.length === 0) {
+            return { imageUrls: [], videoUrl: '' };
+        }
+
+        try {
+            // Separate new and existing files
+            const newFiles = mediaFiles.filter(file => !file.isExisting);
+            const existingFiles = mediaFiles.filter(file => file.isExisting);
+
+            let uploadedUrls: { type: 'image' | 'video', url: string }[] = [];
+
+            // Add existing files to uploadedUrls
+            uploadedUrls = [
+                ...existingFiles.map(file => ({
+                    type: file.type,
+                    url: file.uri // For existing files, uri is the actual URL
+                }))
+            ];
+
+            // Upload new files if any
+            if (newFiles.length > 0) {
+                // Get signed URLs for all new files
+                const fileNames = newFiles.map(file => file.fileName);
+                const signUrlRequest: ReviewUploadSignUrlReq = {
+                    fileNames: fileNames
+                };
+
+                const signUrlResponse = await getReviewUploadSignUrl(signUrlRequest);
+                const signedUrls = signUrlResponse.data.signedUrls;
+
+                // Upload new files
+                const newUploadPromises = newFiles.map(async (file) => {
+                    const signedUrlData = signedUrls.find(url => url.fileName === file.fileName);
+                    if (!signedUrlData) {
+                        throw new Error(`No signed URL found for ${file.fileName}`);
+                    }
+
+                    const response = await fetch(file.uri);
+                    const blob = await response.blob();
+
+                    const uploadResponse = await fetch(signedUrlData.signedUrl, {
+                        method: 'PUT',
+                        body: blob,
+                        headers: {
+                            'Content-Type': file.type === 'image' ? 'image/jpeg' : 'video/mp4',
+                        },
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error(`Upload failed for ${file.fileName}`);
+                    }
+
+                    const publicUrl = signedUrlData.signedUrl.split('?')[0];
+                    return {
+                        type: file.type,
+                        url: publicUrl
+                    };
+                });
+
+                const newUploadResults = await Promise.all(newUploadPromises);
+                uploadedUrls = [...uploadedUrls, ...newUploadResults];
+            }
+
+            const imageUrls = uploadedUrls
+                .filter(result => result.type === 'image')
+                .map(result => result.url);
+            
+            const videoUrl = uploadedUrls
+                .find(result => result.type === 'video')?.url || '';
+
+            return { imageUrls, videoUrl };
+        } catch (error) {
+            console.error('Upload failed:', error);
+            throw new Error('Không thể tải lên file. Vui lòng thử lại.');
+        }
+    };
+
     const handleSubmitReview = async () => {
         setShowValidation(true);
 
@@ -155,6 +330,9 @@ export default function ProductReviewScreen() {
 
         try {
             setIsSubmitting(true);
+
+            // Upload files first
+            const { imageUrls, videoUrl } = await uploadFiles();
 
             if (isEditMode && lineItemId) {
                 // Update existing review
@@ -169,7 +347,9 @@ export default function ProductReviewScreen() {
                     reviewItem: {
                         lineItemId,
                         rating: reviewData.rating,
-                        description: reviewData.description
+                        description: reviewData.description,
+                        imageUrls,
+                        videoUrl: videoUrl || ""
                     }
                 };
 
@@ -185,7 +365,9 @@ export default function ProductReviewScreen() {
                         reviewItem: {
                             lineItemId: parseInt(lineItemIdStr),
                             rating: reviewData.rating,
-                            description: reviewData.description
+                            description: reviewData.description,
+                            imageUrls,
+                            videoUrl: videoUrl || ""
                         }
                     };
 
@@ -210,9 +392,6 @@ export default function ProductReviewScreen() {
     const getCharacterCount = (lineItemId: number) => {
         return reviewsData[lineItemId]?.description?.length || 0;
     }
-
-    // Keep existing useEffect, pickImages, pickVideo, removeMedia functions...
-    // ...existing code...
 
     const renderStars = (count: number, activeCount: number, onPress: (rating: number) => void) => {
         return Array(count)
@@ -256,36 +435,17 @@ export default function ProductReviewScreen() {
                 </View>
 
                 {/* Photo/Video Upload */}
-                {/* <View style={styles.uploadSection}>
-                    <Text style={styles.uploadTitle}>
-                        Thêm ít nhất 1 hình ảnh/video về sản phẩm
-                        <Text style={styles.bonusText}>
-                            {" "}
-                            +200 <FontAwesome name="circle" size={14} color="#FFB800" />
-                        </Text>
-                    </Text>
-
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                        {mediaFiles.map((file, index) => (
-                            <View key={index} style={styles.mediaPreviewContainer}>
-                                {file.type === 'image' ? (
-                                    <Image source={{ uri: file.uri }} style={styles.mediaPreview} />
-                                ) : (
-                                    <Video
-                                        source={{ uri: file.uri }}
-                                        style={styles.mediaPreview}
-                                        resizeMode={ResizeMode.COVER}
-                                    />
-                                )}
-                                <TouchableOpacity
-                                    style={styles.removeMediaButton}
-                                    onPress={() => removeMedia(index)}
-                                >
-                                    <Ionicons name="close-circle" size={24} color="white" />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </ScrollView>
+                <View style={styles.uploadSection}>
+                    {mediaFiles.length > 0 && (
+                        <MediaViewer 
+                            mediaItems={mediaFiles.map(file => ({
+                                type: file.type,
+                                url: file.uri
+                            }))}
+                            onRemove={removeMedia}
+                            editable={true}
+                        />
+                    )}
 
                     <View style={styles.uploadOptions}>
                         <TouchableOpacity
@@ -320,7 +480,7 @@ export default function ProductReviewScreen() {
                             </Text>
                         </TouchableOpacity>
                     </View>
-                </View> */}
+                </View>
 
                 <View style={styles.reviewTextSection}>
                     <Text style={styles.reviewTextTitle}>
@@ -585,20 +745,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "600",
     },
-    // Preserving the styles from original file for commented sections
     uploadSection: {
         paddingVertical: 16,
         borderTopWidth: 1,
         borderTopColor: "#EEEEEE",
-    },
-    uploadTitle: {
-        fontSize: 14,
-        color: "#333333",
-        marginBottom: 12,
-    },
-    bonusText: {
-        color: COLOR.PRIMARY,
-        fontWeight: "bold",
     },
     uploadOptions: {
         flexDirection: "row",
@@ -684,27 +834,6 @@ const styles = StyleSheet.create({
     courierName: {
         fontSize: 14,
         color: "#555555",
-    },
-    mediaPreviewScroll: {
-        paddingVertical: 8,
-        marginBottom: 16,
-    },
-    mediaPreviewContainer: {
-        marginRight: 8,
-        position: 'relative',
-    },
-    mediaPreview: {
-        width: 100,
-        height: 100,
-        borderRadius: 8,
-        backgroundColor: '#f0f0f0',
-    },
-    removeMediaButton: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 12,
     },
     uploadOptionDisabled: {
         borderColor: '#eee',

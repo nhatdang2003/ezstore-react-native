@@ -16,12 +16,13 @@ import { COLOR } from "@/src/constants/color";
 import * as Clipboard from 'expo-clipboard';
 import { FONT } from "@/src/constants/font";
 import { router, useLocalSearchParams } from "expo-router";
-import Modal from "react-native-modal";
-import { getReturnRequestById, deleteReturnRequest, getReturnRequestByOrderId } from "@/src/services/return-request.service";
+const Modal = require("react-native-modal").default;
+import { getReturnRequestById, cancelReturnRequest, getReturnRequestByOrderId } from "@/src/services/return-request.service";
 import { ReturnRequestRes } from "@/src/types/return-request.type";
 import { formatPrice } from "@/src/utils/product";
 import ConfirmDialog from "@/src/components/ConfirmModal";
 import AlertDialog from "@/src/components/AlertModal";
+import MediaViewer from "@/src/components/MediaViewer";
 
 const STATE_COLORS = {
     disabled: "#ccc",
@@ -74,7 +75,7 @@ export default function ReturnedOrderScreen() {
 
         setCancelling(true);
         try {
-            await deleteReturnRequest(returnRequest.id);
+            await cancelReturnRequest(returnRequest.id);
 
             setAlertMessage("Đã hủy yêu cầu hoàn trả thành công");
             setAlertModalVisible(true);
@@ -163,7 +164,7 @@ export default function ReturnedOrderScreen() {
                     >
                         <Ionicons name="chevron-back" size={24} color="black" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Thông tin đơn hàng</Text>
+                    <Text style={styles.headerTitle}>Yêu cầu hoàn trả</Text>
                     <View style={styles.placeholder} />
                 </View>
 
@@ -449,25 +450,12 @@ export default function ReturnedOrderScreen() {
                             <Text>{returnRequest.reason}</Text>
                         </View>
                         {returnRequest.imageUrls && returnRequest.imageUrls.length > 0 && (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', gap: 8 }}>
-                                {returnRequest.imageUrls.map((imageUrl, index) => (
-                                    <View key={index} style={{
-                                        width: 100,
-                                        height: 100,
-                                        marginRight: 8,
-                                        borderRadius: 8,
-                                        overflow: 'hidden',
-                                        position: 'relative'
-                                    }}>
-                                        <Image source={{ uri: imageUrl }} style={{
-                                            width: '100%',
-                                            height: '100%',
-                                            borderRadius: 8,
-                                            backgroundColor: '#ccc'
-                                        }} />
-                                    </View>
-                                ))}
-                            </ScrollView>
+                            <MediaViewer 
+                                mediaItems={returnRequest.imageUrls.map(url => ({ 
+                                    type: 'image' as const, 
+                                    url 
+                                }))} 
+                            />
                         )}
                         {returnRequest.adminComment && (
                             <View style={{ padding: 8, borderRadius: 8, backgroundColor: '#eee', marginVertical: 8 }}>

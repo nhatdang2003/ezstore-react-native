@@ -75,4 +75,6 @@ export interface ProductReview {
         size: string;
     };
     description: string;
+    imageUrls: string[];
+    videoUrl: string;
 }

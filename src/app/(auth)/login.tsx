@@ -10,13 +10,13 @@ import ErrorMessageInput from "@/src/components/ErrorMessageInput";
 import { postLogin } from "@/src/services/auth.service";
 import SocialButtons from "@/src/components/SocialButtons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { connectWebSocket, refreshNotificationCount } from "@/src/services/websocket.service";
 
 const LoginScreen = () => {
     const router = useRouter();
     const [input, setInput] = useState({
         email: "",
         password: "",
-        remember: false,
     });
 
     const [errors, setErrors] = useState({
@@ -58,7 +58,14 @@ const LoginScreen = () => {
             console.log(response);
             // @ts-ignore
             if (response.statusCode === 200) {
-                await AsyncStorage.setItem('access_token', response.data.access_token || '')
+                await AsyncStorage.multiSet([
+                    ['access_token', response.data.access_token || ''],
+                    ['refresh_token', response.data.refresh_token || '']
+                ]);
+                // Initialize WebSocket connection
+                await connectWebSocket();
+                // Get initial notification count
+                await refreshNotificationCount();
                 router.replace('/(tabs)');
             } else {
                 setErrors(prev => ({
@@ -121,11 +128,6 @@ const LoginScreen = () => {
                 </View>
 
                 <View style={styles.forgotPasswordContainer}>
-                    <Checkbox
-                        checked={input.remember}
-                        onCheck={(checked) => setInput({ ...input, remember: checked })}
-                        label="Ghi nhớ mật khẩu"
-                    />
                     <CustomButton
                         title="Quên mật khẩu?"
                         variant="ghost"
@@ -150,8 +152,6 @@ const LoginScreen = () => {
 
                 <SocialButtons
                     onGooglePress={() => { }}
-                    onFacebookPress={() => { }}
-                    onApplePress={() => { }}
                 />
 
                 <View style={styles.registerContainer}>
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     },
     forgotPasswordContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
     },
     forgotButton: {

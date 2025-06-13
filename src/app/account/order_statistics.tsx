@@ -11,7 +11,6 @@ import {
     Modal,
     ActivityIndicator,
 } from 'react-native';
-import { BarChart, LineChart } from 'react-native-chart-kit';
 import Animated, { FadeInRight, FadeIn } from 'react-native-reanimated';
 import { MaterialCommunityIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -24,7 +23,70 @@ import {
     OrderStatisticsSummaryResponse,
     MonthlySpendingChartResponse,
     StatusSpendingChartResponse,
+    OrderHistory,
 } from '@/src/types/order.type';
+
+// Simple Bar Chart Component
+const SimpleBarChart = ({ data, maxValue }: { data: any[], maxValue: number }) => {
+    return (
+        <View style={styles.simpleChart}>
+            <View style={styles.chartArea}>
+                {data.map((item, index) => (
+                    <View key={index} style={styles.barContainer}>
+                        <Text style={styles.barValue}>{item.value.toFixed(1)}M</Text>
+                        <View 
+                            style={[
+                                styles.bar, 
+                                { 
+                                    height: (item.value / maxValue) * 150,
+                                    backgroundColor: item.frontColor 
+                                }
+                            ]} 
+                        />
+                        <Text style={styles.barLabel}>{item.label}</Text>
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+};
+
+// Simple Line Chart Component
+const SimpleLineChart = ({ data }: { data: any[] }) => {
+    const maxValue = Math.max(...data.map(item => item.value));
+    const width = Dimensions.get('window').width - 100;
+    const chartHeight = 120;
+
+    const formatChartDate = (label: string) => {
+        const [month, day] = label.split('/');
+        return `${day}/${month}`;
+    };
+    
+    return (
+        <View style={styles.simpleChart}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={[styles.lineChartContainer, { width: Math.max(width, data.length * 60) }]}>
+                    {data.map((item, index) => (
+                        <View key={index} style={styles.linePointContainer}>
+                            <Text style={styles.lineValue}>
+                                {(item.value / 1000000).toFixed(1)}M
+                            </Text>
+                            <View 
+                                style={[
+                                    styles.lineBar,
+                                    { 
+                                        height: (item.value / maxValue) * chartHeight,
+                                    }
+                                ]}
+                            />
+                            <Text style={styles.lineLabel}>{formatChartDate(item.label)}</Text>
+                        </View>
+                    ))}
+                </View>
+            </ScrollView>
+        </View>
+    );
+};
 
 const OrderStatistics = () => {
     const router = useRouter();
@@ -37,7 +99,7 @@ const OrderStatistics = () => {
     const [statusChartData, setStatusChartData] = useState<StatusSpendingChartResponse | null>(null);
 
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-    const [orders, setOrders] = useState<Order[]>([]);
+    const [orders, setOrders] = useState<OrderHistory[]>([]);
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [ordersPage, setOrdersPage] = useState(0);
     const [hasMoreOrders, setHasMoreOrders] = useState(true);
@@ -203,45 +265,54 @@ const OrderStatistics = () => {
     // Generate chart data based on API response
     const generateChartData = () => {
         return {
-            monthlyData: monthlyChartData ? {
-                labels: monthlyChartData.labels || [],
-                datasets: [
-                    {
-                        data: monthlyChartData.values || [],
-                        color: () => 'rgba(0, 0, 0, 0.8)',
-                        strokeWidth: 2
-                    },
-                ],
-                legend: ["Chi tiêu tháng (VNĐ)"]
-            } : {
-                labels: [],
-                datasets: [{ data: [] }],
-                legend: ["Chi tiêu tháng (VNĐ)"]
-            },
-            barData: statusChartData ? {
-                labels: ['Chờ xác nhận', 'Đang xử lý', 'Đang giao', 'Đã giao'],
-                datasets: [
-                    {
-                        data: [
-                            (statusChartData.pending || 0) / 1000000,
-                            (statusChartData.processing || 0) / 1000000,
-                            (statusChartData.shipping || 0) / 1000000,
-                            (statusChartData.delivered || 0) / 1000000
-                        ],
-                        colors: [
-                            () => statusColors['PENDING'],
-                            () => statusColors['PROCESSING'],
-                            () => statusColors['SHIPPING'],
-                            () => statusColors['DELIVERED']
-                        ]
-                    }
-                ],
-                legend: ["Triệu đồng"]
-            } : {
-                labels: [],
-                datasets: [{ data: [] }],
-                legend: ["Triệu đồng"]
-            }
+            monthlyData: monthlyChartData && monthlyChartData.labels && monthlyChartData.values ? 
+                monthlyChartData.labels.map((label, index) => ({
+                    value: monthlyChartData.values[index] || 0,
+                    label: label,
+                    dataPointText: `${(monthlyChartData.values[index] || 0).toLocaleString('vi-VN')}₫`
+                })) : [],
+            barData: statusChartData ? [
+                {
+                    value: (statusChartData.pending || 0) / 1000000,
+                    label: 'Chờ xác nhận',
+                    frontColor: statusColors['PENDING'],
+                    topLabelComponent: () => (
+                        <Text style={{ fontSize: 10, textAlign: 'center' }}>
+                            {((statusChartData.pending || 0) / 1000000).toFixed(1)}M
+                        </Text>
+                    )
+                },
+                {
+                    value: (statusChartData.processing || 0) / 1000000,
+                    label: 'Đang xử lý',
+                    frontColor: statusColors['PROCESSING'],
+                    topLabelComponent: () => (
+                        <Text style={{ fontSize: 10, textAlign: 'center' }}>
+                            {((statusChartData.processing || 0) / 1000000).toFixed(1)}M
+                        </Text>
+                    )
+                },
+                {
+                    value: (statusChartData.shipping || 0) / 1000000,
+                    label: 'Đang giao',
+                    frontColor: statusColors['SHIPPING'],
+                    topLabelComponent: () => (
+                        <Text style={{ fontSize: 10, textAlign: 'center' }}>
+                            {((statusChartData.shipping || 0) / 1000000).toFixed(1)}M
+                        </Text>
+                    )
+                },
+                {
+                    value: (statusChartData.delivered || 0) / 1000000,
+                    label: 'Đã giao',
+                    frontColor: statusColors['DELIVERED'],
+                    topLabelComponent: () => (
+                        <Text style={{ fontSize: 10, textAlign: 'center' }}>
+                            {((statusChartData.delivered || 0) / 1000000).toFixed(1)}M
+                        </Text>
+                    )
+                }
+            ] : []
         };
     };
 
@@ -441,29 +512,7 @@ const OrderStatistics = () => {
                                 </Text>
                             </View>
                             {monthlyChartData && monthlyChartData.labels && monthlyChartData.labels.length > 0 ? (
-                                <LineChart
-                                    data={chartData.monthlyData}
-                                    width={Dimensions.get('window').width - 50}
-                                    height={220}
-                                    chartConfig={{
-                                        backgroundColor: '#fff',
-                                        backgroundGradientFrom: '#fff',
-                                        backgroundGradientTo: '#fff',
-                                        decimalPlaces: 0,
-                                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                        style: {
-                                            borderRadius: 16,
-                                        },
-                                        propsForDots: {
-                                            r: '6',
-                                            strokeWidth: '2',
-                                            stroke: COLOR.PRIMARY
-                                        }
-                                    }}
-                                    bezier
-                                    style={styles.chart}
-                                />
+                                <SimpleLineChart data={chartData.monthlyData} />
                             ) : (
                                 <View style={styles.noDataContainer}>
                                     <Text style={styles.noDataText}>Không có dữ liệu cho khoảng thời gian đã chọn</Text>
@@ -479,35 +528,10 @@ const OrderStatistics = () => {
                                 </Text>
                             </View>
                             {statusChartData ? (
-                                <>
-                                    <View style={styles.barChartLegendContainer}>
-                                        {['PENDING', 'PROCESSING', 'SHIPPING', 'DELIVERED'].map((status, index) => (
-                                            <View key={index} style={styles.barChartLegendItem}>
-                                                <View style={[styles.barChartLegendColor, { backgroundColor: statusColors[status as keyof typeof statusColors] }]} />
-                                                <Text style={styles.barChartLegendText}>{getStatusShortText(status)}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                    <BarChart
-                                        data={chartData.barData}
-                                        width={Dimensions.get('window').width - 50}
-                                        height={220}
-                                        yAxisLabel=""
-                                        yAxisSuffix=""
-                                        chartConfig={{
-                                            backgroundColor: '#fff',
-                                            backgroundGradientFrom: '#fff',
-                                            backgroundGradientTo: '#fff',
-                                            decimalPlaces: 0,
-                                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                                            style: {
-                                                borderRadius: 16,
-                                            },
-                                        }}
-                                        style={styles.chart}
-                                    />
-                                </>
+                                <SimpleBarChart 
+                                    data={chartData.barData} 
+                                    maxValue={Math.max(...chartData.barData.map(item => item.value))} 
+                                />
                             ) : (
                                 <View style={styles.noDataContainer}>
                                     <Text style={styles.noDataText}>Không có dữ liệu cho khoảng thời gian đã chọn</Text>
@@ -1230,6 +1254,78 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLOR.PRIMARY,
         fontWeight: '500',
+    },
+    simpleChart: {
+        marginBottom: 24,
+        padding: 16,
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    chartArea: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'flex-end',
+        height: 180,
+        paddingHorizontal: 16,
+    },
+    barContainer: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    bar: {
+        width: 30,
+        backgroundColor: COLOR.PRIMARY,
+        borderRadius: 4,
+        marginVertical: 8,
+    },
+    barValue: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: COLOR.TEXT,
+        marginBottom: 4,
+    },
+    barLabel: {
+        fontSize: 10,
+        color: '#666',
+        textAlign: 'center',
+        marginTop: 4,
+    },
+    lineChartContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        height: 220,
+        paddingBottom: 20,
+        paddingTop: 40,
+        paddingHorizontal: 16,
+    },
+    linePointContainer: {
+        alignItems: 'center',
+        marginHorizontal: 8,
+    },
+    lineBar: {
+        width: 30,
+        backgroundColor: COLOR.TEXT,
+        borderRadius: 4,
+        marginVertical: 4,
+        alignSelf: 'flex-end',
+    },
+    lineValue: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: COLOR.TEXT,
+        marginBottom: 4,
+    },
+    lineLabel: {
+        fontSize: 10,
+        color: '#666',
+        textAlign: 'center',
+        marginTop: 4,
+        maxWidth: 40,
     },
 });
 

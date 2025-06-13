@@ -98,14 +98,10 @@ const RegisterScreen = () => {
 
                 // @ts-ignore
                 if (response.statusCode === 201) {
-                    const activeCodeResponse = await getActiveCode({ email: input.email });
-                    // @ts-ignore
-                    if (activeCodeResponse.statusCode === 200) {
-                        router.push({
-                            pathname: '/(auth)/verify',
-                            params: { email: input.email }
-                        });
-                    }
+                    router.push({
+                        pathname: '/(auth)/verify',
+                        params: { email: input.email }
+                    });
                 }
             } catch (error) {
                 console.log(error);
@@ -116,7 +112,10 @@ const RegisterScreen = () => {
     };
 
     return (
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+        >
             <CloseKeyboard>
                 <View style={styles.container}>
                     <View style={styles.logoContainer}>
@@ -216,7 +215,7 @@ const RegisterScreen = () => {
                             <Text style={styles.loginText}>Đã có tài khoản? </Text>
                             <Text
                                 style={styles.loginLink}
-                                onPress={() => router.navigate("/(auth)/login")}
+                                onPress={() => router.back()}
                             >
                                 Đăng nhập
                             </Text>
@@ -230,8 +229,6 @@ const RegisterScreen = () => {
 
                         <SocialButtons
                             onGooglePress={() => { }}
-                            onFacebookPress={() => { }}
-                            onApplePress={() => { }}
                         />
                     </View>
                 </View>
@@ -242,9 +239,10 @@ const RegisterScreen = () => {
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        flexGrow: 1,
         backgroundColor: "#fff",
         padding: 20,
+        minHeight: '100%',
     },
     logoContainer: {
         alignItems: "center",

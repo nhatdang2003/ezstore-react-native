@@ -35,3 +35,8 @@ export const postResetPassword = (data: ResetPasswordRequest) => {
     const url = `api/v1/auth/reset-password-code`
     return axios.post(url, data)
 }
+
+export const refreshToken = (refresh_token: string) => {
+    const url = `api/v1/auth/refresh?refresh_token=${refresh_token}`
+    return axios.get(url)
+}

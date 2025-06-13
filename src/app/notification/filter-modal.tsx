@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native"
 import { Feather } from "@expo/vector-icons"
-import ReactNativeModal from "react-native-modal"
+const ReactNativeModal = require("react-native-modal").default;
 
 interface FilterModalProps {
     visible: boolean

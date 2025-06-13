@@ -9,6 +9,7 @@ import { getActiveCode, postVerifyActivation, postVerifyRecoverPassword, postRec
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import LoadingOverlay from '@/src/components/LoadingOverlay'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { connectWebSocket, refreshNotificationCount } from '@/src/services/websocket.service'
 
 const VerifyActivationScreen = () => {
     const { email } = useLocalSearchParams<{ email: string }>()
@@ -38,7 +39,15 @@ const VerifyActivationScreen = () => {
                     });
                 } else {
                     const accessToken = verifyResponse.data.access_token;
-                    await AsyncStorage.setItem('access_token', accessToken);
+                    const refreshToken = verifyResponse.data.refresh_token;
+                    await AsyncStorage.multiSet([
+                        ['access_token', accessToken || ''],
+                        ['refresh_token', refreshToken || '']
+                    ]);
+                    // Initialize WebSocket connection
+                    await connectWebSocket();
+                    // Get initial notification count
+                    await refreshNotificationCount();
                     router.replace('/(tabs)');
                 }
                 return;

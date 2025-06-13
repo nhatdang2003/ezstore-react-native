@@ -32,9 +32,9 @@ export default function RootLayout() {
                 await connectWebSocket();
                 // Get initial notification count
                 await refreshNotificationCount();
-                router.navigate("/(tabs)");
+                router.replace("/(tabs)");
             } else {
-                router.navigate("/(auth)/login");
+                router.replace("/(auth)/login");
             }
             await SplashScreen.hideAsync();
         };
@@ -87,6 +87,7 @@ export default function RootLayout() {
                 <Stack.Screen name="account/edit_address" options={{ headerShown: false }} />
                 <Stack.Screen name="account/reviews" options={{ headerShown: false }} />
                 <Stack.Screen name="account/list-review" options={{ headerShown: false }} />
+                <Stack.Screen name="account/change_password" options={{ headerShown: false }} />
                 {/* <Stack.Screen name="account/notifications" options={{ headerShown: false }} /> */}
                 <Stack.Screen name="account/order_statistics" options={{ headerShown: false }} />
                 <Stack.Screen name="+not-found" options={{ headerShown: true }} />

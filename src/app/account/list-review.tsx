@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, ScrollView } from "react-native";
 import { Ionicons, SimpleLineIcons } from "@expo/vector-icons";
 import { FONT } from "@/src/constants/font";
@@ -7,6 +7,7 @@ import { COLOR } from "@/src/constants/color";
 import { getOrderReviews } from "@/src/services/order.service";
 import { OrderReviewResponse } from "@/src/types/review.type";
 import { formatDateString } from "@/src/utils/date";
+import MediaViewer from "@/src/components/MediaViewer";
 
 export default function ReviewScreen() {
     const { orderId } = useLocalSearchParams();
@@ -81,6 +82,11 @@ export default function ReviewScreen() {
         );
     }
 
+    const isValidUrl = (url?: string): boolean => {
+        if (!url) return false;
+        return url.trim().length > 0 && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://'));
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.headerTab}>
@@ -101,10 +107,14 @@ export default function ReviewScreen() {
                         <View key={index} style={styles.reviewContainer}>
                             <View style={styles.reviewHeader}>
                                 <View style={styles.userInfo}>
-                                    <Image
-                                        source={{ uri: review.avatar || "/placeholder.svg?height=40&width=40" }}
-                                        style={styles.avatar}
-                                    />
+                                    {isValidUrl(review.avatar) ? (
+                                        <Image
+                                            source={{ uri: review.avatar }}
+                                            style={styles.avatar}
+                                        />
+                                    ) : (
+                                        <View style={[styles.avatar, styles.placeholderAvatar]} />
+                                    )}
                                     <View>
                                         <Text style={styles.username}>
                                             {review.firstName} {review.lastName}
@@ -131,11 +141,33 @@ export default function ReviewScreen() {
                                 {review.createdAt ? formatDateString(review.createdAt) : ''}
                             </Text>
 
+                            {/* Media Section */}
+                            {(review.imageUrls?.length > 0 || review.videoUrl) && (
+                                <View style={styles.mediaContainer}>
+                                    <MediaViewer 
+                                        mediaItems={[
+                                            ...(review.imageUrls?.filter(url => isValidUrl(url)).map(url => ({ 
+                                                type: 'image' as const, 
+                                                url: url as string 
+                                            })) || []),
+                                            ...(isValidUrl(review.videoUrl) ? [{ 
+                                                type: 'video' as const, 
+                                                url: review.videoUrl 
+                                            }] : [])
+                                        ]} 
+                                    />
+                                </View>
+                            )}
+
                             <View style={styles.productContainer}>
-                                <Image
-                                    source={{ uri: review.variantImage || "/placeholder.svg?height=80&width=80" }}
-                                    style={styles.productImage}
-                                />
+                                {isValidUrl(review.variantImage) ? (
+                                    <Image
+                                        source={{ uri: review.variantImage }}
+                                        style={styles.productImage}
+                                    />
+                                ) : (
+                                    <View style={[styles.productImage, styles.placeholderImage]} />
+                                )}
                                 <View style={styles.productInfo}>
                                     <Text style={styles.productName} numberOfLines={2}>
                                         {review.productName}
@@ -203,6 +235,9 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginRight: 8,
     },
+    placeholderAvatar: {
+        backgroundColor: '#f0f0f0',
+    },
     username: {
         fontSize: 16,
         fontWeight: "500",
@@ -230,21 +265,6 @@ const styles = StyleSheet.create({
         color: "#333",
         lineHeight: 20,
     },
-    responseContainer: {
-        backgroundColor: "#F8F8F8",
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    responseTitle: {
-        fontWeight: "600",
-        marginBottom: 8,
-    },
-    responseText: {
-        color: "#555",
-        marginBottom: 4,
-        lineHeight: 20,
-    },
     productContainer: {
         flexDirection: "row",
         backgroundColor: "#F8F8F8",
@@ -257,6 +277,9 @@ const styles = StyleSheet.create({
         height: 80,
         borderRadius: 4,
         marginRight: 12,
+    },
+    placeholderImage: {
+        backgroundColor: '#f0f0f0',
     },
     productName: {
         flex: 1,
@@ -298,5 +321,8 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
     },
-})
+    mediaContainer: {
+        marginBottom: 16,
+    },
+});
 

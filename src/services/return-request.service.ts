@@ -26,3 +26,8 @@ export const deleteReturnRequest = (id: number): Promise<Response<void>> => {
     const url = `/api/v1/return-requests/${id}`;
     return axios.delete(url);
 }
+
+export const cancelReturnRequest = (id: number): Promise<Response<void>> => {
+    const url = `/api/v1/return-requests/user/cancel/${id}`;
+    return axios.put(url);
+}

@@ -1,22 +1,29 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, Dimensions, FlatList } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { AntDesign, Ionicons, FontAwesome } from '@expo/vector-icons'
+import { Video, ResizeMode } from 'expo-av'
 import { FONT } from '@/src/constants/font'
 import { getProductReviews } from '@/src/services/product.service'
 import { formatDate } from '@/src/utils/date'
 import { ProductReview } from '@/src/types/product.type'
+import MediaViewer, { MediaItem } from '@/src/components/MediaViewer'
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window')
 
 const ReviewsProductScreen = () => {
     const router = useRouter()
     const { slug } = useLocalSearchParams()
+    const flatListRef = useRef<FlatList>(null)
 
     const [activeFilter, setActiveFilter] = useState<number | null>(null)
     const [reviews, setReviews] = useState<ProductReview[]>([])
     const [loading, setLoading] = useState(false)
     const [page, setPage] = useState(0)
     const [hasMore, setHasMore] = useState(true)
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null)
+    const [currentReviewMedia, setCurrentReviewMedia] = useState<MediaItem[]>([])
     const PAGE_SIZE = 10
 
     useEffect(() => {
@@ -100,6 +107,15 @@ const ReviewsProductScreen = () => {
     const handleFilterSelect = (stars: number | null) => {
         setActiveFilter(stars === activeFilter ? null : stars)
     }
+
+    const openMediaViewer = (review: ProductReview, initialIndex: number) => {
+        const mediaItems: MediaItem[] = [
+            ...(review.imageUrls?.map(url => ({ type: 'image' as const, url })) || []),
+            ...(review.videoUrl ? [{ type: 'video' as const, url: review.videoUrl }] : [])
+        ];
+        setCurrentReviewMedia(mediaItems);
+        setSelectedMediaIndex(initialIndex);
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -197,6 +213,18 @@ const ReviewsProductScreen = () => {
                                 <Text style={styles.reviewContent}>
                                     {review.description}
                                 </Text>
+
+                                {/* Media Section */}
+                                {(review.imageUrls?.length > 0 || review.videoUrl) && (
+                                    <View style={styles.mediaContainer}>
+                                        <MediaViewer 
+                                            mediaItems={[
+                                                ...(review.imageUrls?.map(url => ({ type: 'image' as const, url })) || []),
+                                                ...(review.videoUrl ? [{ type: 'video' as const, url: review.videoUrl }] : [])
+                                            ]} 
+                                        />
+                                    </View>
+                                )}
                             </View>
                             {index < reviews.length - 1 && <View style={styles.divider} />}
                         </React.Fragment>
@@ -331,7 +359,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#999',
         fontFamily: FONT.LORA,
-    }
+    },
+    mediaContainer: {
+        marginTop: 8,
+    },
 })
 
 export default ReviewsProductScreen
